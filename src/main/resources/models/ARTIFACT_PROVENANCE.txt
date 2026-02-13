@@ -1,0 +1,13 @@
+Chronologer model artifacts were exported from:
+/Users/searle.brian/Documents/projects/chronologer
+
+Commands used:
+1) venv/bin/python Export_Chronologer.py \
+   --model-file models/Chronologer_20220601193755.pt \
+   --output-prefix /tmp/jchronologer_artifacts/Chronologer_20220601193755 \
+   --format torchscript
+
+2) venv/bin/python Export_Chronologer_Golden.py \
+   /tmp/jchronologer_artifacts/parity_cases.tsv \
+   /tmp/jchronologer_artifacts/chronologer_parity_cases \
+   --model-file models/Chronologer_20220601193755.pt
