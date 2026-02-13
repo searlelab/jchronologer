@@ -5,7 +5,7 @@
 
   <groupId>org.searlelab</groupId>
   <artifactId>jchronologer</artifactId>
-  <version>0.1.0-SNAPSHOT</version>
+  <version>1.0.0</version>
   <name>jchronologer</name>
   <description>Java inference implementation of Chronologer using DJL</description>
 
