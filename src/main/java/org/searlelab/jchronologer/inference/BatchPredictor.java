@@ -10,6 +10,8 @@ import ai.djl.translate.NoopTranslator;
 import ai.djl.translate.TranslateException;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import org.searlelab.jchronologer.util.ResourceUtils;
 
 /**
@@ -21,14 +23,20 @@ import org.searlelab.jchronologer.util.ResourceUtils;
 public final class BatchPredictor implements AutoCloseable {
 
     private final Model model;
-    private final Predictor<NDList, NDList> predictor;
+    private final Set<Predictor<NDList, NDList>> predictors;
+    private final ThreadLocal<Predictor<NDList, NDList>> threadLocalPredictor;
 
     public BatchPredictor(String modelResource) {
         Path modelPath = ResourceUtils.copyClasspathResourceToTempFile(modelResource, ".torchscript.pt");
         try {
             this.model = Model.newInstance("chronologer", "PyTorch");
             this.model.load(modelPath.getParent(), modelPath.getFileName().toString());
-            this.predictor = model.newPredictor(new NoopTranslator());
+            this.predictors = ConcurrentHashMap.newKeySet();
+            this.threadLocalPredictor = ThreadLocal.withInitial(() -> {
+                Predictor<NDList, NDList> predictor = model.newPredictor(new NoopTranslator());
+                predictors.add(predictor);
+                return predictor;
+            });
         } catch (IOException | MalformedModelException e) {
             throw new IllegalStateException("Failed to load Chronologer model from resource: " + modelResource, e);
         }
@@ -42,6 +50,7 @@ public final class BatchPredictor implements AutoCloseable {
      */
     public float[] predict(long[][] tokenBatch) {
         try (NDManager manager = model.getNDManager().newSubManager()) {
+            Predictor<NDList, NDList> predictor = threadLocalPredictor.get();
             NDArray input = manager.create(tokenBatch);
             NDList output = predictor.predict(new NDList(input));
             return output.singletonOrThrow().toFloatArray();
@@ -52,7 +61,9 @@ public final class BatchPredictor implements AutoCloseable {
 
     @Override
     public void close() {
-        predictor.close();
+        for (Predictor<NDList, NDList> predictor : predictors) {
+            predictor.close();
+        }
         model.close();
     }
 }

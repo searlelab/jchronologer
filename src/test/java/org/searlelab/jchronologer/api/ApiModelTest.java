@@ -57,15 +57,18 @@ class ApiModelTest {
         assertEquals(ChronologerOptions.DEFAULT_MODEL_RESOURCE, defaults.getModelResource());
         assertEquals(ChronologerOptions.DEFAULT_PREPROCESSING_RESOURCE, defaults.getPreprocessingResource());
         assertEquals(ChronologerOptions.DEFAULT_BATCH_SIZE, defaults.getBatchSize());
+        assertEquals(ChronologerOptions.DEFAULT_INFERENCE_THREADS, defaults.getInferenceThreads());
 
         ChronologerOptions custom = ChronologerOptions.builder()
                 .modelResource("models/custom.pt")
                 .preprocessingResource("models/custom.json")
                 .batchSize(128)
+                .inferenceThreads(2)
                 .build();
         assertEquals("models/custom.pt", custom.getModelResource());
         assertEquals("models/custom.json", custom.getPreprocessingResource());
         assertEquals(128, custom.getBatchSize());
+        assertEquals(2, custom.getInferenceThreads());
     }
 
     @Test
@@ -84,6 +87,9 @@ class ApiModelTest {
                 .build());
         assertThrows(IllegalArgumentException.class, () -> ChronologerOptions.builder()
                 .batchSize(0)
+                .build());
+        assertThrows(IllegalArgumentException.class, () -> ChronologerOptions.builder()
+                .inferenceThreads(0)
                 .build());
     }
 

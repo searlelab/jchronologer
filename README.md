@@ -27,7 +27,7 @@ Prediction flow:
 1. Load preprocessing metadata JSON and compile regex/N-term rules.
 2. For each `PeptideModSeq`, patch known legacy encodings, tokenize to model vocabulary, and validate bounds.
 3. Split accepted token arrays into batches.
-4. Run TorchScript inference through DJL and map each score back to original row index.
+4. Run TorchScript inference through DJL (parallelized across batch chunks) and map each score back to original row index.
 5. Return `PredictionResult` containing accepted rows (`Pred_HI`) and rejected rows (`RejectionReason` + optional detail).
 
 ## Build And Test
@@ -90,6 +90,7 @@ import org.searlelab.jchronologer.impl.ChronologerFactory;
 
 ChronologerOptions options = ChronologerOptions.builder()
         .batchSize(2048)
+        .inferenceThreads(2)
         .build();
 
 try (Chronologer chronologer = ChronologerFactory.create(options)) {

@@ -4,7 +4,8 @@ package org.searlelab.jchronologer.api;
  * Runtime configuration for creating a {@link Chronologer} instance.
  *
  * <p>Defaults point at bundled classpath resources for the reference model and preprocessing
- * metadata so a caller can use {@link Builder#build()} without overriding values.
+ * metadata, a reference batch size, and a small inference thread pool so a caller can use
+ * {@link Builder#build()} without overriding values.
  */
 public final class ChronologerOptions {
 
@@ -13,15 +14,19 @@ public final class ChronologerOptions {
     public static final String DEFAULT_PREPROCESSING_RESOURCE =
             "models/Chronologer_20220601193755.preprocessing.json";
     public static final int DEFAULT_BATCH_SIZE = 2048;
+    public static final int DEFAULT_INFERENCE_THREADS =
+            Math.max(1, Runtime.getRuntime().availableProcessors()-2);
 
     private final String modelResource;
     private final String preprocessingResource;
     private final int batchSize;
+    private final int inferenceThreads;
 
     private ChronologerOptions(Builder builder) {
         this.modelResource = builder.modelResource;
         this.preprocessingResource = builder.preprocessingResource;
         this.batchSize = builder.batchSize;
+        this.inferenceThreads = builder.inferenceThreads;
     }
 
     /**
@@ -45,16 +50,21 @@ public final class ChronologerOptions {
         return batchSize;
     }
 
+    public int getInferenceThreads() {
+        return inferenceThreads;
+    }
+
     /**
      * Builder for {@link ChronologerOptions}.
      *
-     * <p>Validation is applied in {@link #build()} to enforce non-empty resources and a positive
-     * batch size.
+     * <p>Validation is applied in {@link #build()} to enforce non-empty resources and positive
+     * runtime sizing values.
      */
     public static final class Builder {
         private String modelResource = DEFAULT_MODEL_RESOURCE;
         private String preprocessingResource = DEFAULT_PREPROCESSING_RESOURCE;
         private int batchSize = DEFAULT_BATCH_SIZE;
+        private int inferenceThreads = DEFAULT_INFERENCE_THREADS;
 
         private Builder() {
         }
@@ -93,6 +103,17 @@ public final class ChronologerOptions {
         }
 
         /**
+         * Sets the maximum number of threads used to score inference batches in parallel.
+         *
+         * @param inferenceThreads inference threads, must be positive
+         * @return this builder
+         */
+        public Builder inferenceThreads(int inferenceThreads) {
+            this.inferenceThreads = inferenceThreads;
+            return this;
+        }
+
+        /**
          * Builds immutable options after validating required fields.
          *
          * @return validated options instance
@@ -106,6 +127,9 @@ public final class ChronologerOptions {
             }
             if (batchSize <= 0) {
                 throw new IllegalArgumentException("Batch size must be positive.");
+            }
+            if (inferenceThreads <= 0) {
+                throw new IllegalArgumentException("Inference threads must be positive.");
             }
             return new ChronologerOptions(this);
         }

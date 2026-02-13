@@ -2,6 +2,12 @@ package org.searlelab.jchronologer.impl;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.searlelab.jchronologer.api.AcceptedPrediction;
 import org.searlelab.jchronologer.api.Chronologer;
 import org.searlelab.jchronologer.api.ChronologerOptions;
@@ -29,6 +35,7 @@ public final class DefaultChronologer implements Chronologer {
     private final ChronologerOptions options;
     private final ChronologerPreprocessor preprocessor;
     private final BatchPredictor batchPredictor;
+    private final ExecutorService inferenceExecutor;
 
     public DefaultChronologer(ChronologerOptions options) {
         this.options = options;
@@ -36,7 +43,14 @@ public final class DefaultChronologer implements Chronologer {
                 PreprocessingMetadataLoader.loadFromClasspath(options.getPreprocessingResource());
         this.preprocessor = new ChronologerPreprocessor(metadata);
         this.batchPredictor = new BatchPredictor(options.getModelResource());
-        LOGGER.info("Loaded Chronologer model from classpath resource {}", options.getModelResource());
+        this.inferenceExecutor = options.getInferenceThreads() > 1
+                ? newInferenceExecutor(options.getInferenceThreads())
+                : null;
+        LOGGER.info(
+                "Loaded Chronologer model from classpath resource {} (batchSize={}, inferenceThreads={})",
+                options.getModelResource(),
+                options.getBatchSize(),
+                options.getInferenceThreads());
     }
 
     /**
@@ -71,25 +85,16 @@ public final class DefaultChronologer implements Chronologer {
             }
         }
 
-        int batchSize = options.getBatchSize();
-        for (int i = 0; i < acceptedDrafts.size(); i += batchSize) {
-            int end = Math.min(i + batchSize, acceptedDrafts.size());
-            long[][] batchTokens = new long[end - i][];
-            for (int j = i; j < end; j++) {
-                batchTokens[j - i] = acceptedDrafts.get(j).tokenArray;
-            }
-
-            float[] batchPredictions = batchPredictor.predict(batchTokens);
-            for (int j = i; j < end; j++) {
-                AcceptedDraft draft = acceptedDrafts.get(j);
-                accepted.add(new AcceptedPrediction(
-                        draft.rowIndex,
-                        draft.peptideModSeq,
-                        draft.patchedPeptideModSeq,
-                        draft.codedPeptideSeq,
-                        draft.tokenArray,
-                        batchPredictions[j - i]));
-            }
+        float[] predictionsByAcceptedIndex = scoreAcceptedDrafts(acceptedDrafts);
+        for (int i = 0; i < acceptedDrafts.size(); i++) {
+            AcceptedDraft draft = acceptedDrafts.get(i);
+            accepted.add(new AcceptedPrediction(
+                    draft.rowIndex,
+                    draft.peptideModSeq,
+                    draft.patchedPeptideModSeq,
+                    draft.codedPeptideSeq,
+                    draft.tokenArray,
+                    predictionsByAcceptedIndex[i]));
         }
 
         return new PredictionResult(accepted, rejected);
@@ -97,7 +102,94 @@ public final class DefaultChronologer implements Chronologer {
 
     @Override
     public void close() {
+        shutdownInferenceExecutor();
         batchPredictor.close();
+    }
+
+    private float[] scoreAcceptedDrafts(List<AcceptedDraft> acceptedDrafts) {
+        float[] predictionsByAcceptedIndex = new float[acceptedDrafts.size()];
+        if (acceptedDrafts.isEmpty()) {
+            return predictionsByAcceptedIndex;
+        }
+
+        List<BatchRequest> batchRequests = partitionIntoBatches(acceptedDrafts, options.getBatchSize());
+        if (inferenceExecutor == null || batchRequests.size() == 1) {
+            for (BatchRequest request : batchRequests) {
+                float[] batchPredictions = batchPredictor.predict(request.tokenBatch);
+                System.arraycopy(
+                        batchPredictions,
+                        0,
+                        predictionsByAcceptedIndex,
+                        request.startIndex,
+                        batchPredictions.length);
+            }
+            return predictionsByAcceptedIndex;
+        }
+
+        List<Future<BatchResult>> futures = new ArrayList<>(batchRequests.size());
+        for (BatchRequest request : batchRequests) {
+            futures.add(inferenceExecutor.submit(
+                    () -> new BatchResult(request.startIndex, batchPredictor.predict(request.tokenBatch))));
+        }
+
+        try {
+            for (Future<BatchResult> future : futures) {
+                BatchResult batchResult = future.get();
+                System.arraycopy(
+                        batchResult.predictions,
+                        0,
+                        predictionsByAcceptedIndex,
+                        batchResult.startIndex,
+                        batchResult.predictions.length);
+            }
+            return predictionsByAcceptedIndex;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            futures.forEach(future -> future.cancel(true));
+            throw new IllegalStateException("Chronologer inference was interrupted.", e);
+        } catch (ExecutionException e) {
+            futures.forEach(future -> future.cancel(true));
+            Throwable cause = e.getCause() == null ? e : e.getCause();
+            throw new IllegalStateException("Failed to run Chronologer inference.", cause);
+        }
+    }
+
+    private static List<BatchRequest> partitionIntoBatches(List<AcceptedDraft> acceptedDrafts, int batchSize) {
+        List<BatchRequest> batchRequests = new ArrayList<>();
+        for (int i = 0; i < acceptedDrafts.size(); i += batchSize) {
+            int end = Math.min(i + batchSize, acceptedDrafts.size());
+            long[][] batchTokens = new long[end - i][];
+            for (int j = i; j < end; j++) {
+                batchTokens[j - i] = acceptedDrafts.get(j).tokenArray;
+            }
+            batchRequests.add(new BatchRequest(i, batchTokens));
+        }
+        return batchRequests;
+    }
+
+    private static ExecutorService newInferenceExecutor(int threads) {
+        AtomicInteger threadCounter = new AtomicInteger(1);
+        return Executors.newFixedThreadPool(threads, runnable -> {
+            Thread thread = new Thread(runnable);
+            thread.setName("chronologer-inference-" + threadCounter.getAndIncrement());
+            thread.setDaemon(true);
+            return thread;
+        });
+    }
+
+    private void shutdownInferenceExecutor() {
+        if (inferenceExecutor == null) {
+            return;
+        }
+        inferenceExecutor.shutdown();
+        try {
+            if (!inferenceExecutor.awaitTermination(30, TimeUnit.SECONDS)) {
+                inferenceExecutor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            inferenceExecutor.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
     }
 
     /**
@@ -121,6 +213,26 @@ public final class DefaultChronologer implements Chronologer {
             this.patchedPeptideModSeq = patchedPeptideModSeq;
             this.codedPeptideSeq = codedPeptideSeq;
             this.tokenArray = tokenArray;
+        }
+    }
+
+    private static final class BatchRequest {
+        private final int startIndex;
+        private final long[][] tokenBatch;
+
+        private BatchRequest(int startIndex, long[][] tokenBatch) {
+            this.startIndex = startIndex;
+            this.tokenBatch = tokenBatch;
+        }
+    }
+
+    private static final class BatchResult {
+        private final int startIndex;
+        private final float[] predictions;
+
+        private BatchResult(int startIndex, float[] predictions) {
+            this.startIndex = startIndex;
+            this.predictions = predictions;
         }
     }
 }
