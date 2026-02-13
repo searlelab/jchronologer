@@ -1,12 +1,12 @@
 package org.searlelab.jchronologer;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.searlelab.jchronologer.api.AcceptedPrediction;
@@ -77,10 +77,7 @@ public final class Main {
             predictionResult = chronologer.predict(peptides);
         }
 
-        Map<Integer, AcceptedPrediction> acceptedByRow = new HashMap<>();
-        for (AcceptedPrediction accepted : predictionResult.getAccepted()) {
-            acceptedByRow.put(accepted.getRowIndex(), accepted);
-        }
+        Map<Integer, AcceptedPrediction> acceptedByRow = predictionResult.getAcceptedByRowIndex();
 
         List<String> headers = new ArrayList<>(inputTable.headers);
         headers.add("Pred_HI");
@@ -107,38 +104,38 @@ public final class Main {
     }
 
     private static InputTable readInputTable(Path input, String peptideColumn) throws IOException {
-        List<String> lines = Files.readAllLines(input, StandardCharsets.UTF_8);
-        String firstNonBlank = firstNonBlank(lines);
-        if (firstNonBlank == null) {
-            throw new IllegalArgumentException("Input file is empty: " + input);
-        }
-
-        if (looksLikeTsv(firstNonBlank, peptideColumn)) {
-            TsvTable table = TsvTable.read(input);
-            int peptideColumnIndex = table.columnIndex(peptideColumn);
-            if (peptideColumnIndex < 0) {
-                throw new IllegalArgumentException("Input TSV is missing peptide column: " + peptideColumn);
+        try (BufferedReader reader = Files.newBufferedReader(input, StandardCharsets.UTF_8)) {
+            String line;
+            String firstNonBlank = null;
+            while ((line = reader.readLine()) != null) {
+                if (!line.isBlank()) {
+                    firstNonBlank = line;
+                    break;
+                }
             }
-            return new InputTable(table.getHeaders(), table.getRows(), peptideColumnIndex);
-        }
-
-        List<String[]> rows = new ArrayList<>();
-        for (String line : lines) {
-            String peptide = line.trim();
-            if (!peptide.isEmpty()) {
-                rows.add(new String[] {peptide});
+            if (firstNonBlank == null) {
+                throw new IllegalArgumentException("Input file is empty: " + input);
             }
-        }
-        return new InputTable(List.of(peptideColumn), rows, 0);
-    }
 
-    private static String firstNonBlank(List<String> lines) {
-        for (String line : lines) {
-            if (!line.isBlank()) {
-                return line;
+            if (looksLikeTsv(firstNonBlank, peptideColumn)) {
+                TsvTable table = TsvTable.read(input);
+                int peptideColumnIndex = table.columnIndex(peptideColumn);
+                if (peptideColumnIndex < 0) {
+                    throw new IllegalArgumentException("Input TSV is missing peptide column: " + peptideColumn);
+                }
+                return new InputTable(table.getHeaders(), table.getRows(), peptideColumnIndex);
             }
+
+            List<String[]> rows = new ArrayList<>();
+            rows.add(new String[] {firstNonBlank.trim()});
+            while ((line = reader.readLine()) != null) {
+                String peptide = line.trim();
+                if (!peptide.isEmpty()) {
+                    rows.add(new String[] {peptide});
+                }
+            }
+            return new InputTable(List.of(peptideColumn), rows, 0);
         }
-        return null;
     }
 
     private static boolean looksLikeTsv(String firstNonBlankLine, String peptideColumn) {

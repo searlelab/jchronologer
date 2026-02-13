@@ -9,7 +9,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -38,10 +37,7 @@ class GoldenInferenceParityTest {
         assertEquals(payload.get("accepted").size(), result.getAcceptedCount());
         assertEquals(payload.get("rejected").size(), result.getRejectedCount());
 
-        Map<Integer, AcceptedPrediction> acceptedByRow = new HashMap<>();
-        for (AcceptedPrediction accepted : result.getAccepted()) {
-            acceptedByRow.put(accepted.getRowIndex(), accepted);
-        }
+        Map<Integer, AcceptedPrediction> acceptedByRow = result.getAcceptedByRowIndex();
 
         for (JsonNode acceptedNode : payload.get("accepted")) {
             int rowIndex = acceptedNode.get("RowIndex").asInt();
@@ -55,10 +51,7 @@ class GoldenInferenceParityTest {
             assertTrue(rel <= 1e-5f, "Relative diff too large at row " + rowIndex + ": " + rel);
         }
 
-        Map<Integer, RejectedPrediction> rejectedByRow = new HashMap<>();
-        for (RejectedPrediction rejected : result.getRejected()) {
-            rejectedByRow.put(rejected.getRowIndex(), rejected);
-        }
+        Map<Integer, RejectedPrediction> rejectedByRow = result.getRejectedByRowIndex();
 
         for (JsonNode rejectedNode : payload.get("rejected")) {
             int rowIndex = rejectedNode.get("RowIndex").asInt();

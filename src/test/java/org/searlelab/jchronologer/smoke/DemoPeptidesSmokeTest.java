@@ -45,15 +45,8 @@ class DemoPeptidesSmokeTest {
             result = chronologer.predict(peptides);
         }
 
-        Map<Integer, AcceptedPrediction> acceptedByRow = new HashMap<>();
-        for (AcceptedPrediction accepted : result.getAccepted()) {
-            acceptedByRow.put(accepted.getRowIndex(), accepted);
-        }
-
-        Map<Integer, RejectedPrediction> rejectedByRow = new HashMap<>();
-        for (RejectedPrediction rejected : result.getRejected()) {
-            rejectedByRow.put(rejected.getRowIndex(), rejected);
-        }
+        Map<Integer, AcceptedPrediction> acceptedByRow = result.getAcceptedByRowIndex();
+        Map<Integer, RejectedPrediction> rejectedByRow = result.getRejectedByRowIndex();
 
         System.out.println("PeptideModSeq\tPred_HI");
         int compared = 0;

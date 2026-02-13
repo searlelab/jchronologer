@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class ApiModelTest {
@@ -83,5 +85,44 @@ class ApiModelTest {
         assertThrows(IllegalArgumentException.class, () -> ChronologerOptions.builder()
                 .batchSize(0)
                 .build());
+    }
+
+    @Test
+    void predictionResultRowIndexViewsExposeAcceptedAndRejectedRows() {
+        AcceptedPrediction acceptedFirst = new AcceptedPrediction(
+                3,
+                "AAA",
+                "AAA",
+                "_AAA_",
+                new long[] {1L, 2L},
+                1.0f);
+        AcceptedPrediction acceptedSecond = new AcceptedPrediction(
+                3,
+                "BBB",
+                "BBB",
+                "_BBB_",
+                new long[] {3L, 4L},
+                2.0f);
+        RejectedPrediction rejected = new RejectedPrediction(
+                5,
+                "BAD",
+                "BAD",
+                RejectionReason.TOKENIZATION_ERROR,
+                "bad token");
+
+        PredictionResult result = new PredictionResult(
+                List.of(acceptedFirst, acceptedSecond),
+                List.of(rejected));
+
+        Map<Integer, AcceptedPrediction> acceptedByRow = result.getAcceptedByRowIndex();
+        Map<Integer, RejectedPrediction> rejectedByRow = result.getRejectedByRowIndex();
+
+        assertEquals(1, acceptedByRow.size());
+        assertEquals("BBB", acceptedByRow.get(3).getPeptideModSeq());
+        assertEquals(2.0f, acceptedByRow.get(3).getPredHi());
+        assertEquals(1, rejectedByRow.size());
+        assertEquals(RejectionReason.TOKENIZATION_ERROR, rejectedByRow.get(5).getRejectionReason());
+        assertThrows(UnsupportedOperationException.class, () -> acceptedByRow.put(7, acceptedFirst));
+        assertThrows(UnsupportedOperationException.class, () -> rejectedByRow.clear());
     }
 }

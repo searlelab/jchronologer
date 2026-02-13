@@ -22,7 +22,6 @@ Core packages:
 - `org.searlelab.jchronologer.inference`: DJL model loading and batched prediction
 - `org.searlelab.jchronologer.util`: TSV and classpath-resource utilities
 - `org.searlelab.jchronologer.Main`: executable default CLI (plain-text or TSV input)
-- `org.searlelab.jchronologer.cli.Main`: command-style CLI (`predict ...`) with optional rejected-row diagnostics
 
 Prediction flow:
 1. Load preprocessing metadata JSON and compile regex/N-term rules.
@@ -61,7 +60,7 @@ Coverage output:
 - XML: `target/site/jacoco/jacoco.xml`
 - HTML: `target/site/jacoco/index.html`
 
-Package thin and fat jars:
+Package default artifacts:
 
 ```bash
 mvn -am package
@@ -69,6 +68,15 @@ mvn -am package
 
 Artifacts:
 - Thin library jar: `target/jchronologer-1.0.0.jar`
+- Javadocs jar: `target/jchronologer-1.0.0-javadoc.jar`
+
+Optional fat jar (only when explicitly requested):
+
+```bash
+mvn -am -Pfat-jar package
+```
+
+Artifact:
 - Executable fat jar: `target/jchronologer-1.0.0-all.jar`
 
 ## API Usage
@@ -116,25 +124,12 @@ Notes:
   - `--batch_size <n>`
   - `--peptide_column <name>`
 
-Command-style CLI (`org.searlelab.jchronologer.cli.Main`) with rejected-row diagnostics:
-
-```bash
-java -cp target/jchronologer-1.0.0-all.jar \
-  org.searlelab.jchronologer.cli.Main \
-  predict --input input.tsv --output output.tsv --keep-rejected
-```
-
-When `--keep-rejected` is set, output adds:
-- `ChronologerStatus`
-- `RejectionReason`
-- `ErrorDetail`
-
 ## Input Compatibility
 
-- expected peptide column: `PeptideModSeq` (configurable in both CLIs)
+- expected peptide column: `PeptideModSeq` (configurable via CLI option)
 - supported peptide length after tokenization: 6 to 50 amino acids
 - modification formatting: EncyclopeDIA-style mass annotations (same style as Python Chronologer)
-- unsupported/invalid peptides are surfaced as structured rejections (`PredictionResult`) and may be dropped or preserved depending on CLI mode
+- unsupported/invalid peptides are surfaced as structured rejections (`PredictionResult`) and are dropped from CLI output
 
 ## Model Artifacts
 

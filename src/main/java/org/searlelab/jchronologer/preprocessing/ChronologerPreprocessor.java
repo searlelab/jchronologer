@@ -1,5 +1,6 @@
 package org.searlelab.jchronologer.preprocessing;
 
+import java.util.HashMap;
 import java.util.Map;
 import org.searlelab.jchronologer.api.RejectionReason;
 import org.searlelab.jchronologer.preprocessing.PreprocessingMetadataLoader.CompiledPreprocessingMetadata;
@@ -19,9 +20,11 @@ public final class ChronologerPreprocessor {
     private static final String C_CYCLO_PATCH = "C[+39.99491463]";
 
     private final CompiledPreprocessingMetadata metadata;
+    private final Map<Character, Integer> tokenByResidue;
 
     public ChronologerPreprocessor(CompiledPreprocessingMetadata metadata) {
         this.metadata = metadata;
+        this.tokenByResidue = buildTokenLookup(metadata.getAaToInt());
     }
 
     /**
@@ -58,10 +61,9 @@ public final class ChronologerPreprocessor {
         }
 
         long[] tokenArray = new long[metadata.tokenArrayLength()];
-        Map<String, Integer> aaToInt = metadata.getAaToInt();
         for (int i = 0; i < coded.length(); i++) {
-            String residue = String.valueOf(coded.charAt(i));
-            Integer value = aaToInt.get(residue);
+            char residue = coded.charAt(i);
+            Integer value = tokenByResidue.get(residue);
             if (value == null) {
                 return PreprocessingOutcome.rejected(
                         patched,
@@ -118,5 +120,16 @@ public final class ChronologerPreprocessor {
         sequence = sequence + "_";
 
         return sequence.indexOf('[') >= 0 ? null : sequence;
+    }
+
+    private static Map<Character, Integer> buildTokenLookup(Map<String, Integer> aaToInt) {
+        Map<Character, Integer> tokenLookup = new HashMap<>();
+        for (Map.Entry<String, Integer> entry : aaToInt.entrySet()) {
+            String token = entry.getKey();
+            if (token != null && token.length() == 1) {
+                tokenLookup.put(token.charAt(0), entry.getValue());
+            }
+        }
+        return tokenLookup;
     }
 }
