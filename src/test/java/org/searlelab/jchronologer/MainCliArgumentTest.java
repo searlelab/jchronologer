@@ -72,6 +72,20 @@ class MainCliArgumentTest {
     }
 
     @Test
+    void nonNumericBatchSizeReturnsError() {
+        RunResult result = runMain("input.tsv", "--batch_size", "abc");
+        assertEquals(2, result.code);
+        assertTrue(result.stderr.contains("Invalid integer value for option: --batch_size"));
+    }
+
+    @Test
+    void optionTokenAsBatchSizeValueReturnsMissingValueError() {
+        RunResult result = runMain("input.tsv", "--batch_size", "--peptide_column", "Seq");
+        assertEquals(2, result.code);
+        assertTrue(result.stderr.contains("Missing value for option: --batch_size"));
+    }
+
+    @Test
     void emptyInputFileReturnsPredictionFailure() throws IOException {
         Path input = Files.createTempFile("jchronologer-main-empty", ".txt");
         RunResult result = runMain(input.toString());

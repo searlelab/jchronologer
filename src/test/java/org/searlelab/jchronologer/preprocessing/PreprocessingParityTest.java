@@ -55,6 +55,20 @@ class PreprocessingParityTest {
         }
     }
 
+    @Test
+    void shortNtermAnnotationIsRejectedWithTokenizationError() {
+        CompiledPreprocessingMetadata metadata =
+                PreprocessingMetadataLoader.loadFromClasspath("models/Chronologer_20220601193755.preprocessing.json");
+        ChronologerPreprocessor preprocessor = new ChronologerPreprocessor(metadata);
+
+        PreprocessingOutcome outcome = preprocessor.preprocess("[+1]ACDEFGHIK");
+
+        assertFalse(outcome.isAccepted());
+        assertEquals(RejectionReason.TOKENIZATION_ERROR, outcome.getRejectionReason());
+        assertNotNull(outcome.getErrorDetail());
+        assertTrue(outcome.getErrorDetail().contains("N-term annotation is too short"));
+    }
+
     private static JsonNode readGoldenJson() throws IOException {
         ObjectMapper mapper = new ObjectMapper();
         try (InputStream stream = Thread.currentThread().getContextClassLoader().getResourceAsStream(GOLDEN_RESOURCE)) {

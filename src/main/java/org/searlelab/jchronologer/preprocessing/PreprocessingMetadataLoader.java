@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 public final class PreprocessingMetadataLoader {
 
@@ -24,7 +25,7 @@ public final class PreprocessingMetadataLoader {
             }
             PreprocessingMetadata metadata = MAPPER.readValue(stream, PreprocessingMetadata.class);
             validate(metadata, resource);
-            return compile(metadata);
+            return compile(metadata, resource);
         } catch (IOException e) {
             throw new IllegalStateException("Failed to load preprocessing resource: " + resource, e);
         }
@@ -37,6 +38,21 @@ public final class PreprocessingMetadataLoader {
         if (metadata.getModRegexRules() == null) {
             throw new IllegalArgumentException("Missing mod_regex_rules in preprocessing resource: " + resource);
         }
+        for (int i = 0; i < metadata.getModRegexRules().size(); i++) {
+            PreprocessingMetadata.RegexRuleSpec rule = metadata.getModRegexRules().get(i);
+            if (rule == null) {
+                throw new IllegalArgumentException(
+                        "Invalid mod_regex_rules entry at index " + i + " in preprocessing resource: " + resource);
+            }
+            if (rule.getPattern() == null || rule.getPattern().isBlank()) {
+                throw new IllegalArgumentException(
+                        "Invalid mod_regex_rules pattern at index " + i + " in preprocessing resource: " + resource);
+            }
+            if (rule.getToken() == null || rule.getToken().isBlank()) {
+                throw new IllegalArgumentException(
+                        "Invalid mod_regex_rules token at index " + i + " in preprocessing resource: " + resource);
+            }
+        }
         if (metadata.getNtermKeys() == null || metadata.getNtermKeys().isEmpty()) {
             throw new IllegalArgumentException("Missing nterm_keys in preprocessing resource: " + resource);
         }
@@ -45,13 +61,20 @@ public final class PreprocessingMetadataLoader {
         }
     }
 
-    private static CompiledPreprocessingMetadata compile(PreprocessingMetadata metadata) {
+    private static CompiledPreprocessingMetadata compile(PreprocessingMetadata metadata, String resource) {
         List<CompiledPreprocessingMetadata.CompiledRegexRule> regexRules = new ArrayList<>();
-        for (PreprocessingMetadata.RegexRuleSpec rule : metadata.getModRegexRules()) {
+        for (int i = 0; i < metadata.getModRegexRules().size(); i++) {
+            PreprocessingMetadata.RegexRuleSpec rule = metadata.getModRegexRules().get(i);
             String normalizedPattern = normalizePythonQuantifiers(rule.getPattern());
-            regexRules.add(new CompiledPreprocessingMetadata.CompiledRegexRule(
-                    Pattern.compile(normalizedPattern),
-                    rule.getToken()));
+            try {
+                regexRules.add(new CompiledPreprocessingMetadata.CompiledRegexRule(
+                        Pattern.compile(normalizedPattern),
+                        rule.getToken()));
+            } catch (PatternSyntaxException e) {
+                throw new IllegalArgumentException(
+                        "Invalid mod_regex_rules regex at index " + i + " in preprocessing resource: " + resource,
+                        e);
+            }
         }
         return new CompiledPreprocessingMetadata(
                 metadata.getAaToInt(),

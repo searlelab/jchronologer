@@ -1,0 +1,12 @@
+{
+  "aa_to_int": {
+    "A": 1
+  },
+  "mod_regex_rules": [
+    null
+  ],
+  "nterm_keys": {
+    "[+42.010565]": "[+42.010565]"
+  },
+  "max_peptide_len": 4
+}

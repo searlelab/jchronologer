@@ -166,7 +166,7 @@ public final class Main {
                     break;
                 case "--batch_size":
                 case "--batch-size":
-                    batchSize = Integer.parseInt(requireValue(args, ++i, arg));
+                    batchSize = parseIntegerOption(requireValue(args, ++i, arg), arg);
                     break;
                 case "--peptide_column":
                 case "--peptide-column":
@@ -206,7 +206,19 @@ public final class Main {
         if (index >= args.length) {
             throw new IllegalArgumentException("Missing value for option: " + flag);
         }
-        return args[index];
+        String value = args[index];
+        if (value.startsWith("--")) {
+            throw new IllegalArgumentException("Missing value for option: " + flag);
+        }
+        return value;
+    }
+
+    private static int parseIntegerOption(String value, String flag) {
+        try {
+            return Integer.parseInt(value);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Invalid integer value for option: " + flag + " (" + value + ")");
+        }
     }
 
     private static void printUsage(PrintStream stream) {

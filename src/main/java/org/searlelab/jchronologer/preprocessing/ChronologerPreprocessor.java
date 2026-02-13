@@ -76,6 +76,9 @@ public final class ChronologerPreprocessor {
         for (CompiledRegexRule rule : metadata.getModRegexRules()) {
             sequence = rule.getPattern().matcher(sequence).replaceAll(rule.getToken());
         }
+        if (sequence.isEmpty()) {
+            throw new IllegalArgumentException("Peptide sequence is empty after applying modification rules.");
+        }
 
         if (sequence.charAt(0) == 'd') {
             sequence = ")" + sequence;
@@ -85,6 +88,9 @@ public final class ChronologerPreprocessor {
             int end = sequence.indexOf(']');
             if (end < 0) {
                 throw new IllegalArgumentException("Missing closing bracket in N-term annotation.");
+            }
+            if (end < 7) {
+                throw new IllegalArgumentException("N-term annotation is too short: " + sequence.substring(0, end + 1));
             }
             String key = sequence.substring(1, 7);
             String ntermToken = metadata.getNtermKeys().get(key);

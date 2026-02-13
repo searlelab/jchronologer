@@ -70,6 +70,21 @@ class CliMainArgumentTest {
     }
 
     @Test
+    void nonNumericBatchSizeReturnsTwo() {
+        RunResult result = runCli("predict", "--input", "in.tsv", "--output", "out.tsv", "--batch-size", "abc");
+        assertEquals(2, result.code);
+        assertTrue(result.stderr.contains("Invalid integer value for option: --batch-size"));
+    }
+
+    @Test
+    void optionTokenAsBatchSizeValueReturnsMissingValueError() {
+        RunResult result = runCli(
+                "predict", "--input", "in.tsv", "--output", "out.tsv", "--batch-size", "--peptide-column");
+        assertEquals(2, result.code);
+        assertTrue(result.stderr.contains("Missing value for option: --batch-size"));
+    }
+
+    @Test
     void predictHelpOptionReturnsTwoWithGuidance() {
         RunResult result = runCli("predict", "--help");
         assertEquals(2, result.code);

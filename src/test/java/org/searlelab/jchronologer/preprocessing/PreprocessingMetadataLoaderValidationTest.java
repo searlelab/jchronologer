@@ -35,6 +35,42 @@ class PreprocessingMetadataLoaderValidationTest {
     }
 
     @Test
+    void loadFromClasspathValidatesNullModRegexRuleEntry() {
+        IllegalArgumentException error = assertThrows(
+                IllegalArgumentException.class,
+                () -> PreprocessingMetadataLoader.loadFromClasspath(
+                        "data/preprocessing/invalid_mod_regex_rule_entry_null.json"));
+        assertTrue(error.getMessage().contains("Invalid mod_regex_rules entry at index 0"));
+    }
+
+    @Test
+    void loadFromClasspathValidatesBlankModRegexPattern() {
+        IllegalArgumentException error = assertThrows(
+                IllegalArgumentException.class,
+                () -> PreprocessingMetadataLoader.loadFromClasspath(
+                        "data/preprocessing/invalid_mod_regex_pattern_blank.json"));
+        assertTrue(error.getMessage().contains("Invalid mod_regex_rules pattern at index 0"));
+    }
+
+    @Test
+    void loadFromClasspathValidatesBlankModRegexToken() {
+        IllegalArgumentException error = assertThrows(
+                IllegalArgumentException.class,
+                () -> PreprocessingMetadataLoader.loadFromClasspath(
+                        "data/preprocessing/invalid_mod_regex_token_blank.json"));
+        assertTrue(error.getMessage().contains("Invalid mod_regex_rules token at index 0"));
+    }
+
+    @Test
+    void loadFromClasspathValidatesRegexPatternSyntax() {
+        IllegalArgumentException error = assertThrows(
+                IllegalArgumentException.class,
+                () -> PreprocessingMetadataLoader.loadFromClasspath(
+                        "data/preprocessing/invalid_mod_regex_pattern_syntax.json"));
+        assertTrue(error.getMessage().contains("Invalid mod_regex_rules regex at index 0"));
+    }
+
+    @Test
     void loadFromClasspathValidatesNtermKeys() {
         IllegalArgumentException error = assertThrows(
                 IllegalArgumentException.class,
