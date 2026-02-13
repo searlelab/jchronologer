@@ -114,6 +114,11 @@
         <groupId>org.jacoco</groupId>
         <artifactId>jacoco-maven-plugin</artifactId>
         <version>${jacoco.version}</version>
+        <configuration>
+          <includes>
+            <include>org/searlelab/jchronologer/**</include>
+          </includes>
+        </configuration>
         <executions>
           <execution>
             <id>prepare-agent</id>
@@ -127,11 +132,6 @@
             <goals>
               <goal>report</goal>
             </goals>
-            <configuration>
-              <includes>
-                <include>org/searlelab/jchronologer/**</include>
-              </includes>
-            </configuration>
           </execution>
         </executions>
       </plugin>
