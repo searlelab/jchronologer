@@ -2,6 +2,12 @@ package org.searlelab.jchronologer.preprocessing;
 
 import org.searlelab.jchronologer.api.RejectionReason;
 
+/**
+ * Result of preprocessing one peptide sequence prior to model inference.
+ *
+ * <p>An outcome is either accepted (with coded sequence and token array) or rejected (with a
+ * structured reason and optional details).
+ */
 public final class PreprocessingOutcome {
 
     private final boolean accepted;

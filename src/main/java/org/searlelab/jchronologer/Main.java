@@ -16,6 +16,13 @@ import org.searlelab.jchronologer.api.PredictionResult;
 import org.searlelab.jchronologer.impl.ChronologerFactory;
 import org.searlelab.jchronologer.util.TsvTable;
 
+/**
+ * Default executable CLI entry point for jchronologer.
+ *
+ * <p>This mode supports either TSV input (with a peptide column) or plain-text one-peptide-per-line
+ * input. Rejected peptides are omitted from output to mirror Python {@code Predict_RT.py}
+ * behavior.
+ */
 public final class Main {
 
     private static final String DEFAULT_PEPTIDE_COLUMN = "PeptideModSeq";
@@ -236,6 +243,9 @@ public final class Main {
         stream.println("  --help, -h                Show this help");
     }
 
+    /**
+     * Parsed command-line arguments for the default CLI mode.
+     */
     private record CliArgs(
             Path input,
             Path output,
@@ -244,6 +254,9 @@ public final class Main {
             boolean help) {
     }
 
+    /**
+     * Input rows plus resolved peptide-column index.
+     */
     private record InputTable(
             List<String> headers,
             List<String[]> rows,

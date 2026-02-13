@@ -14,6 +14,14 @@ import org.searlelab.jchronologer.preprocessing.PreprocessingOutcome;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Default {@link Chronologer} implementation that orchestrates preprocessing and batched
+ * inference.
+ *
+ * <p>This class is intentionally stateful: model and metadata resources are loaded once at
+ * construction time, then reused across repeated {@link #predict(List)} calls until
+ * {@link #close()}.
+ */
 public final class DefaultChronologer implements Chronologer {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DefaultChronologer.class);
@@ -31,6 +39,12 @@ public final class DefaultChronologer implements Chronologer {
         LOGGER.info("Loaded Chronologer model from classpath resource {}", options.getModelResource());
     }
 
+    /**
+     * Runs end-to-end Chronologer inference for a batch of peptide sequences.
+     *
+     * <p>Each row is first preprocessed independently; accepted rows are scored in configured
+     * batch chunks and rejected rows are returned with diagnostics.
+     */
     @Override
     public PredictionResult predict(List<String> peptideModSeqs) {
         List<AcceptedDraft> acceptedDrafts = new ArrayList<>();
@@ -86,6 +100,9 @@ public final class DefaultChronologer implements Chronologer {
         batchPredictor.close();
     }
 
+    /**
+     * Internal accepted-row payload retained between preprocessing and model scoring.
+     */
     private static final class AcceptedDraft {
         private final int rowIndex;
         private final String peptideModSeq;

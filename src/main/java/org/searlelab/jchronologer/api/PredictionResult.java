@@ -4,6 +4,12 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+/**
+ * Immutable container for one Chronologer prediction batch result.
+ *
+ * <p>The accepted and rejected lists are aligned to input rows via {@code rowIndex}, allowing
+ * callers to reconstruct original ordering or filter behavior as needed.
+ */
 public final class PredictionResult {
 
     private final List<AcceptedPrediction> accepted;

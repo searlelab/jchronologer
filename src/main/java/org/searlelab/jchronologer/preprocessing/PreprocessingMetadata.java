@@ -4,6 +4,11 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Jackson-mapped metadata schema describing Chronologer preprocessing vocabulary and rules.
+ *
+ * <p>This type represents the raw JSON structure before regex compilation and runtime validation.
+ */
 public final class PreprocessingMetadata {
 
     @JsonProperty("aa_to_int")
@@ -38,6 +43,9 @@ public final class PreprocessingMetadata {
         return maxPeptideLen + 2;
     }
 
+    /**
+     * Raw regex-rule specification from metadata JSON.
+     */
     public static final class RegexRuleSpec {
         private String pattern;
         private String token;

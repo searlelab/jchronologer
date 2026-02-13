@@ -14,6 +14,12 @@ import org.searlelab.jchronologer.api.RejectedPrediction;
 import org.searlelab.jchronologer.impl.ChronologerFactory;
 import org.searlelab.jchronologer.util.TsvTable;
 
+/**
+ * Command-style CLI entry point with explicit {@code predict} subcommand semantics.
+ *
+ * <p>Compared with {@link org.searlelab.jchronologer.Main}, this variant requires explicit input
+ * and output options and can optionally retain rejected rows with diagnostics.
+ */
 public final class Main {
 
     private Main() {
@@ -215,6 +221,9 @@ public final class Main {
         System.out.println("  --keep-rejected           Keep rejected rows and add rejection diagnostics");
     }
 
+    /**
+     * Parsed arguments for {@code predict} command execution.
+     */
     private record PredictArgs(
             Path input,
             Path output,

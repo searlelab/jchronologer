@@ -5,6 +5,13 @@ import org.searlelab.jchronologer.api.RejectionReason;
 import org.searlelab.jchronologer.preprocessing.PreprocessingMetadataLoader.CompiledPreprocessingMetadata;
 import org.searlelab.jchronologer.preprocessing.PreprocessingMetadataLoader.CompiledPreprocessingMetadata.CompiledRegexRule;
 
+/**
+ * Converts Chronologer peptide modification strings into model-ready token arrays.
+ *
+ * <p>This component mirrors the Python preprocessing path: patch known legacy encodings, apply
+ * regex-based modification substitution, map N-terminus annotations, validate peptide length, and
+ * convert tokens using metadata vocabulary.
+ */
 public final class ChronologerPreprocessor {
 
     private static final int MIN_PEPTIDE_LEN = 6;
@@ -17,6 +24,13 @@ public final class ChronologerPreprocessor {
         this.metadata = metadata;
     }
 
+    /**
+     * Preprocesses one peptide sequence into either an accepted tokenized payload or a structured
+     * rejection.
+     *
+     * @param peptideModSeq input peptide modification string
+     * @return accepted or rejected preprocessing outcome
+     */
     public PreprocessingOutcome preprocess(String peptideModSeq) {
         if (peptideModSeq == null || peptideModSeq.isBlank()) {
             return PreprocessingOutcome.rejected(peptideModSeq, RejectionReason.TOKENIZATION_ERROR,

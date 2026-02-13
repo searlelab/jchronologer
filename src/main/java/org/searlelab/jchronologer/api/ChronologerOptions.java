@@ -1,5 +1,11 @@
 package org.searlelab.jchronologer.api;
 
+/**
+ * Runtime configuration for creating a {@link Chronologer} instance.
+ *
+ * <p>Defaults point at bundled classpath resources for the reference model and preprocessing
+ * metadata so a caller can use {@link Builder#build()} without overriding values.
+ */
 public final class ChronologerOptions {
 
     public static final String DEFAULT_MODEL_RESOURCE =
@@ -18,6 +24,11 @@ public final class ChronologerOptions {
         this.batchSize = builder.batchSize;
     }
 
+    /**
+     * Creates a new mutable builder initialized with default resource paths and batch size.
+     *
+     * @return options builder
+     */
     public static Builder builder() {
         return new Builder();
     }
@@ -34,6 +45,12 @@ public final class ChronologerOptions {
         return batchSize;
     }
 
+    /**
+     * Builder for {@link ChronologerOptions}.
+     *
+     * <p>Validation is applied in {@link #build()} to enforce non-empty resources and a positive
+     * batch size.
+     */
     public static final class Builder {
         private String modelResource = DEFAULT_MODEL_RESOURCE;
         private String preprocessingResource = DEFAULT_PREPROCESSING_RESOURCE;
@@ -42,21 +59,44 @@ public final class ChronologerOptions {
         private Builder() {
         }
 
+        /**
+         * Sets the classpath resource path for the TorchScript model artifact.
+         *
+         * @param modelResource model resource path
+         * @return this builder
+         */
         public Builder modelResource(String modelResource) {
             this.modelResource = modelResource;
             return this;
         }
 
+        /**
+         * Sets the classpath resource path for preprocessing metadata JSON.
+         *
+         * @param preprocessingResource preprocessing metadata resource path
+         * @return this builder
+         */
         public Builder preprocessingResource(String preprocessingResource) {
             this.preprocessingResource = preprocessingResource;
             return this;
         }
 
+        /**
+         * Sets the maximum number of accepted peptides per inference batch.
+         *
+         * @param batchSize batch size, must be positive
+         * @return this builder
+         */
         public Builder batchSize(int batchSize) {
             this.batchSize = batchSize;
             return this;
         }
 
+        /**
+         * Builds immutable options after validating required fields.
+         *
+         * @return validated options instance
+         */
         public ChronologerOptions build() {
             if (modelResource == null || modelResource.isBlank()) {
                 throw new IllegalArgumentException("Model resource must be non-empty.");

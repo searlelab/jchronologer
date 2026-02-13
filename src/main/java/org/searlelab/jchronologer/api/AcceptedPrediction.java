@@ -2,6 +2,12 @@ package org.searlelab.jchronologer.api;
 
 import java.util.Arrays;
 
+/**
+ * Immutable accepted prediction record for one input row.
+ *
+ * <p>Instances keep the original input sequence, the patched/tokenized representations used for
+ * inference, and the resulting {@code Pred_HI} value.
+ */
 public final class AcceptedPrediction {
 
     private final int rowIndex;

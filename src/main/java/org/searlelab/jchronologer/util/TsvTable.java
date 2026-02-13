@@ -10,6 +10,12 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+/**
+ * Minimal immutable TSV table representation with convenience read/write helpers.
+ *
+ * <p>The parser is intentionally lightweight: it splits on tab delimiters, preserves empty cells,
+ * and pads short rows to header width.
+ */
 public final class TsvTable {
 
     private final List<String> headers;

@@ -10,6 +10,10 @@ import java.util.Map;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
+/**
+ * Loads and validates preprocessing metadata resources, then compiles regex rules for runtime
+ * tokenization.
+ */
 public final class PreprocessingMetadataLoader {
 
     private static final ObjectMapper MAPPER = new ObjectMapper()
@@ -18,6 +22,12 @@ public final class PreprocessingMetadataLoader {
     private PreprocessingMetadataLoader() {
     }
 
+    /**
+     * Reads preprocessing metadata JSON from the application classpath.
+     *
+     * @param resource classpath path to metadata JSON
+     * @return validated and compiled metadata
+     */
     public static CompiledPreprocessingMetadata loadFromClasspath(String resource) {
         try (InputStream stream = Thread.currentThread().getContextClassLoader().getResourceAsStream(resource)) {
             if (stream == null) {
@@ -87,6 +97,9 @@ public final class PreprocessingMetadataLoader {
         return pattern.replaceAll("\\{,(\\d+)\\}", "{0,$1}");
     }
 
+    /**
+     * Runtime-ready preprocessing metadata with compiled regex rules.
+     */
     public static final class CompiledPreprocessingMetadata {
 
         private final Map<String, Integer> aaToInt;
@@ -125,6 +138,9 @@ public final class PreprocessingMetadataLoader {
             return maxPeptideLen + 2;
         }
 
+        /**
+         * Compiled regex rule used to replace one supported modification pattern with a token.
+         */
         public static final class CompiledRegexRule {
             private final Pattern pattern;
             private final String token;

@@ -12,6 +12,12 @@ import java.io.IOException;
 import java.nio.file.Path;
 import org.searlelab.jchronologer.util.ResourceUtils;
 
+/**
+ * Thin DJL wrapper for running Chronologer TorchScript inference on token batches.
+ *
+ * <p>The model is loaded once from a classpath resource copied to a temporary file, then reused
+ * for subsequent prediction calls.
+ */
 public final class BatchPredictor implements AutoCloseable {
 
     private final Model model;
@@ -28,6 +34,12 @@ public final class BatchPredictor implements AutoCloseable {
         }
     }
 
+    /**
+     * Executes model inference for a batch of tokenized peptides.
+     *
+     * @param tokenBatch token matrix with shape {@code [batch, maxLen + 2]}
+     * @return one {@code Pred_HI} value per input row
+     */
     public float[] predict(long[][] tokenBatch) {
         try (NDManager manager = model.getNDManager().newSubManager()) {
             NDArray input = manager.create(tokenBatch);
