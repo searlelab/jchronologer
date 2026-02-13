@@ -20,6 +20,16 @@ Run all tests:
 mvn -am test
 ```
 
+Generate JaCoCo coverage report:
+
+```bash
+mvn -am verify
+```
+
+Coverage outputs:
+- XML: `target/site/jacoco/jacoco.xml`
+- HTML: `target/site/jacoco/index.html`
+
 Run one test class:
 
 ```bash
@@ -61,14 +71,12 @@ try (Chronologer chronologer = ChronologerFactory.createDefault()) {
 
 ```bash
 java -jar target/jchronologer-0.1.0-SNAPSHOT-all.jar \
-  predict \
-  --input input.tsv \
-  --output output.tsv \
-  --peptide-column PeptideModSeq
+  input.tsv \
+  output.tsv
 ```
 
+If `output.tsv` is omitted, predictions are written to standard out.
 By default rejected peptides are dropped (matching Python `Predict_RT.py`).
-Use `--keep-rejected` to preserve all rows and include rejection diagnostics.
 
 ## Model Artifacts
 
