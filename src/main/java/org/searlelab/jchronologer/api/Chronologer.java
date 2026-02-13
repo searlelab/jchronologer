@@ -11,6 +11,16 @@ import java.util.List;
 public interface Chronologer extends AutoCloseable {
 
     /**
+     * Initializes model and preprocessing resources for this client instance.
+     *
+     * <p>This method is optional and idempotent. Implementations may initialize eagerly during
+     * construction or lazily on first use.
+     */
+    default void init() {
+        // no-op by default for custom implementations
+    }
+
+    /**
      * Predicts hydrophobic index values ({@code Pred_HI}) for a batch of peptide modification
      * sequences.
      *

@@ -70,6 +70,7 @@ public final class Main {
 
         ChronologerOptions options = ChronologerOptions.builder()
                 .batchSize(cliArgs.batchSize)
+                .verboseLogging(cliArgs.verbose)
                 .build();
 
         PredictionResult predictionResult;
@@ -158,6 +159,7 @@ public final class Main {
         Path output = null;
         String peptideColumn = DEFAULT_PEPTIDE_COLUMN;
         int batchSize = ChronologerOptions.DEFAULT_BATCH_SIZE;
+        boolean verbose = false;
         boolean help = false;
 
         List<String> positional = new ArrayList<>();
@@ -176,6 +178,9 @@ public final class Main {
                 case "--peptide-column":
                     peptideColumn = requireValue(args, ++i, arg);
                     break;
+                case "--verbose":
+                    verbose = true;
+                    break;
                 default:
                     if (arg.startsWith("--")) {
                         throw new IllegalArgumentException("Unknown option: " + arg);
@@ -186,7 +191,7 @@ public final class Main {
         }
 
         if (help) {
-            return new CliArgs(null, null, peptideColumn, batchSize, true);
+            return new CliArgs(null, null, peptideColumn, batchSize, verbose, true);
         }
 
         if (positional.isEmpty()) {
@@ -203,7 +208,7 @@ public final class Main {
         if (positional.size() == 2) {
             output = Path.of(positional.get(1));
         }
-        return new CliArgs(input, output, peptideColumn, batchSize, false);
+        return new CliArgs(input, output, peptideColumn, batchSize, verbose, false);
     }
 
     private static String requireValue(String[] args, int index, String flag) {
@@ -237,6 +242,7 @@ public final class Main {
         stream.println("Options:");
         stream.println("  --batch_size <n>          Inference batch size (default: 2048)");
         stream.println("  --peptide_column <name>   Peptide column name for TSV input (default: "+DEFAULT_PEPTIDE_COLUMN+")");
+        stream.println("  --verbose                 Enable detailed startup diagnostics");
         stream.println("  --help, -h                Show this help");
     }
 
@@ -248,6 +254,7 @@ public final class Main {
             Path output,
             String peptideColumn,
             int batchSize,
+            boolean verbose,
             boolean help) {
     }
 

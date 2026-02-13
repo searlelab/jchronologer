@@ -2,6 +2,7 @@ package org.searlelab.jchronologer.inference;
 
 import ai.djl.Model;
 import ai.djl.MalformedModelException;
+import ai.djl.engine.EngineException;
 import ai.djl.inference.Predictor;
 import ai.djl.ndarray.NDArray;
 import ai.djl.ndarray.NDList;
@@ -13,6 +14,8 @@ import java.nio.file.Path;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import org.searlelab.jchronologer.util.ResourceUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Thin DJL wrapper for running Chronologer TorchScript inference on token batches.
@@ -22,22 +25,62 @@ import org.searlelab.jchronologer.util.ResourceUtils;
  */
 public final class BatchPredictor implements AutoCloseable {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(BatchPredictor.class);
+
     private final Model model;
     private final Set<Predictor<NDList, NDList>> predictors;
     private final ThreadLocal<Predictor<NDList, NDList>> threadLocalPredictor;
+    private final boolean verboseLogging;
 
     public BatchPredictor(String modelResource) {
+        this(modelResource, false);
+    }
+
+    public BatchPredictor(String modelResource, boolean verboseLogging) {
+        this.verboseLogging = verboseLogging;
+        long initStart = System.nanoTime();
+        logVerbose("Starting BatchPredictor initialization for model resource {}", modelResource);
+
+        long copyStart = System.nanoTime();
         Path modelPath = ResourceUtils.copyClasspathResourceToTempFile(modelResource, ".torchscript.pt");
+        logVerbose(
+                "Copied model resource {} to temporary file {} in {} ms",
+                modelResource,
+                modelPath,
+                elapsedMillis(copyStart));
+
+        LOGGER.info(
+                "Found matching platform from current JVM: {}-{}",
+                System.getProperty("os.name"),
+                System.getProperty("os.arch"));
+
         try {
+            long modelCreateStart = System.nanoTime();
             this.model = Model.newInstance("chronologer", "PyTorch");
+            logVerbose("Created DJL model handle in {} ms", elapsedMillis(modelCreateStart));
+
+            long modelLoadStart = System.nanoTime();
             this.model.load(modelPath.getParent(), modelPath.getFileName().toString());
+            logVerbose(
+                    "Loaded TorchScript model {} in {} ms",
+                    modelPath.getFileName(),
+                    elapsedMillis(modelLoadStart));
+
             this.predictors = ConcurrentHashMap.newKeySet();
             this.threadLocalPredictor = ThreadLocal.withInitial(() -> {
                 Predictor<NDList, NDList> predictor = model.newPredictor(new NoopTranslator());
                 predictors.add(predictor);
                 return predictor;
             });
-        } catch (IOException | MalformedModelException e) {
+
+            long predictorInitStart = System.nanoTime();
+            Predictor<NDList, NDList> initialPredictor = model.newPredictor(new NoopTranslator());
+            predictors.add(initialPredictor);
+            threadLocalPredictor.set(initialPredictor);
+            logVerbose("Created initial predictor in {} ms", elapsedMillis(predictorInitStart));
+
+            logVerbose("BatchPredictor initialization complete in {} ms", elapsedMillis(initStart));
+        } catch (IOException | MalformedModelException | EngineException e) {
             throw new IllegalStateException("Failed to load Chronologer model from resource: " + modelResource, e);
         }
     }
@@ -65,5 +108,17 @@ public final class BatchPredictor implements AutoCloseable {
             predictor.close();
         }
         model.close();
+    }
+
+    private static long elapsedMillis(long startNanos) {
+        return (System.nanoTime() - startNanos) / 1_000_000L;
+    }
+
+    private void logVerbose(String message, Object... args) {
+        if (verboseLogging) {
+            LOGGER.info(message, args);
+        } else {
+            LOGGER.debug(message, args);
+        }
     }
 }

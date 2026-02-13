@@ -122,6 +122,19 @@ class MainCliArgumentTest {
         assertEquals("VATVSLPR", table.getRows().get(0)[0]);
     }
 
+    @Test
+    void verboseFlagIsAccepted() throws IOException {
+        Path input = Files.createTempFile("jchronologer-main-verbose", ".txt");
+        Files.writeString(
+                input,
+                "VATVSLPR\n[42.010565]ACDEFGHIK\n",
+                StandardCharsets.UTF_8);
+        Path output = Files.createTempFile("jchronologer-main-verbose-out", ".tsv");
+
+        RunResult result = runMain(input.toString(), output.toString(), "--verbose");
+        assertEquals(0, result.code);
+    }
+
     private static RunResult runMain(String... args) {
         ByteArrayOutputStream stdoutBytes = new ByteArrayOutputStream();
         ByteArrayOutputStream stderrBytes = new ByteArrayOutputStream();

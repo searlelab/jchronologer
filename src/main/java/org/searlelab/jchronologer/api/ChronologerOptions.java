@@ -21,12 +21,14 @@ public final class ChronologerOptions {
     private final String preprocessingResource;
     private final int batchSize;
     private final int inferenceThreads;
+    private final boolean verboseLogging;
 
     private ChronologerOptions(Builder builder) {
         this.modelResource = builder.modelResource;
         this.preprocessingResource = builder.preprocessingResource;
         this.batchSize = builder.batchSize;
         this.inferenceThreads = builder.inferenceThreads;
+        this.verboseLogging = builder.verboseLogging;
     }
 
     /**
@@ -54,6 +56,10 @@ public final class ChronologerOptions {
         return inferenceThreads;
     }
 
+    public boolean isVerboseLogging() {
+        return verboseLogging;
+    }
+
     /**
      * Builder for {@link ChronologerOptions}.
      *
@@ -65,6 +71,7 @@ public final class ChronologerOptions {
         private String preprocessingResource = DEFAULT_PREPROCESSING_RESOURCE;
         private int batchSize = DEFAULT_BATCH_SIZE;
         private int inferenceThreads = DEFAULT_INFERENCE_THREADS;
+        private boolean verboseLogging;
 
         private Builder() {
         }
@@ -110,6 +117,17 @@ public final class ChronologerOptions {
          */
         public Builder inferenceThreads(int inferenceThreads) {
             this.inferenceThreads = inferenceThreads;
+            return this;
+        }
+
+        /**
+         * Enables verbose startup/inference logging for diagnostics.
+         *
+         * @param verboseLogging whether verbose logging is enabled
+         * @return this builder
+         */
+        public Builder verboseLogging(boolean verboseLogging) {
+            this.verboseLogging = verboseLogging;
             return this;
         }
 

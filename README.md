@@ -91,19 +91,25 @@ import org.searlelab.jchronologer.impl.ChronologerFactory;
 ChronologerOptions options = ChronologerOptions.builder()
         .batchSize(2048)
         .inferenceThreads(2)
+        .verboseLogging(false)
         .build();
 
 try (Chronologer chronologer = ChronologerFactory.create(options)) {
-    PredictionResult result = chronologer.predict(List.of(
+    // Optional explicit lifecycle hook.
+    chronologer.init();
+
+    PredictionResult first = chronologer.predict(List.of(
             "VATVSLPR",
             "[+42.010565]KGSPTPGFSTR",
             "ACDE[+123.456]FGHIK"));
 
-    // Accepted rows include Pred_HI and tokenization artifacts.
-    result.getAccepted();
+    PredictionResult second = chronologer.predict(List.of(
+            "LGEHNIDVLEGNEQFINAAK",
+            "FLEQQNQVLQTK"));
 
-    // Rejected rows include reason and optional error detail.
-    result.getRejected();
+    // Reuse one initialized Chronologer for multiple inference rounds.
+    first.getAccepted();
+    second.getRejected();
 }
 ```
 
@@ -124,6 +130,7 @@ Notes:
 - options:
   - `--batch_size <n>`
   - `--peptide_column <name>`
+  - `--verbose` (show detailed startup diagnostics)
 
 ## Input Compatibility
 

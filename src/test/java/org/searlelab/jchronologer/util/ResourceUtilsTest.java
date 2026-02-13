@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
@@ -27,5 +28,35 @@ class ResourceUtilsTest {
                 IllegalArgumentException.class,
                 () -> ResourceUtils.copyClasspathResourceToTempFile("does/not/exist.txt", ".txt"));
         assertTrue(error.getMessage().contains("Missing classpath resource"));
+    }
+
+    @Test
+    void copyClasspathResourceToTempFileWrapsReadIoExceptions() {
+        ClassLoader original = Thread.currentThread().getContextClassLoader();
+        ClassLoader failing = new ClassLoader(original) {
+            @Override
+            public InputStream getResourceAsStream(String name) {
+                if (!"broken/resource.txt".equals(name)) {
+                    return super.getResourceAsStream(name);
+                }
+                return new InputStream() {
+                    @Override
+                    public int read() throws IOException {
+                        throw new IOException("simulated read failure");
+                    }
+                };
+            }
+        };
+
+        Thread.currentThread().setContextClassLoader(failing);
+        try {
+            IllegalStateException error = assertThrows(
+                    IllegalStateException.class,
+                    () -> ResourceUtils.copyClasspathResourceToTempFile("broken/resource.txt", ".txt"));
+            assertTrue(error.getMessage().contains("Failed to copy classpath resource"));
+            assertTrue(error.getCause() instanceof IOException);
+        } finally {
+            Thread.currentThread().setContextClassLoader(original);
+        }
     }
 }
