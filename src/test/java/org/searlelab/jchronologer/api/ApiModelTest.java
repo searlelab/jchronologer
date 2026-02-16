@@ -177,4 +177,71 @@ class ApiModelTest {
         assertThrows(UnsupportedOperationException.class, () -> result.getAccepted().add(accepted));
         assertThrows(UnsupportedOperationException.class, () -> result.getRejected().clear());
     }
+
+    @Test
+    void chronologerLibraryEntryDefensivelyCopiesArraysAndConvertsPeptideString() {
+        double[] masses = new double[] {100.0, 200.0};
+        float[] intensities = new float[] {0.2f, 0.8f};
+        String[] ions = new String[] {"1+y1", "1+b1"};
+
+        ChronologerLibraryEntry entry = new ChronologerLibraryEntry(
+                "[UNIMOD:1]-AK[UNIMOD:737]-[]",
+                (byte) 2,
+                0.3,
+                456.7,
+                123.4f,
+                masses,
+                intensities,
+                ions);
+
+        masses[0] = 999.0;
+        intensities[0] = 999.0f;
+        ions[0] = "bad";
+
+        assertEquals("[UNIMOD:1]-AK[UNIMOD:737]-[]", entry.getUnimodPeptideSequence());
+        assertEquals((byte) 2, entry.getPrecursorCharge());
+        assertEquals(0.3, entry.getPrecursorNce());
+        assertEquals(456.7, entry.getPrecursorMz());
+        assertEquals(123.4f, entry.getRetentionTimeInSeconds());
+        assertArrayEquals(new double[] {100.0, 200.0}, entry.getMassArray());
+        assertArrayEquals(new float[] {0.2f, 0.8f}, entry.getIntensityArray());
+        assertArrayEquals(new String[] {"1+y1", "1+b1"}, entry.getIonTypeArray());
+        assertEquals("[+42.010565]AK[+229.162932]", entry.getPeptideModSeq());
+    }
+
+    @Test
+    void libraryPredictionRequestStoresUnmodifiableConditionList() {
+        PrecursorCondition condition = new PrecursorCondition((byte) 2, 0.3);
+        LibraryPredictionRequest request = new LibraryPredictionRequest(
+                "PEPTIDE",
+                List.of(condition));
+
+        assertEquals("PEPTIDE", request.getPeptideSequence());
+        assertEquals(1, request.getPrecursorConditions().size());
+        assertEquals((byte) 2, request.getPrecursorConditions().get(0).getPrecursorCharge());
+        assertEquals(0.3, request.getPrecursorConditions().get(0).getPrecursorNce());
+        assertThrows(UnsupportedOperationException.class, () -> request.getPrecursorConditions().clear());
+    }
+
+    @Test
+    void chronologerLibraryOptionsBuilderSupportsDefaultsAndValidation() {
+        ChronologerLibraryOptions defaults = ChronologerLibraryOptions.builder().build();
+        assertEquals(
+                ChronologerLibraryOptions.DEFAULT_CARTOGRAPHER_MODEL_RESOURCE,
+                defaults.getCartographerModelResource());
+        assertEquals(
+                ChronologerLibraryOptions.DEFAULT_CARTOGRAPHER_PREPROCESSING_RESOURCE,
+                defaults.getCartographerPreprocessingResource());
+        assertEquals(ChronologerLibraryOptions.DEFAULT_MASS_MATCH_EPSILON, defaults.getMassMatchEpsilon());
+        assertEquals(
+                ChronologerLibraryOptions.DEFAULT_MINIMUM_REPORTED_INTENSITY,
+                defaults.getMinimumReportedIntensity());
+
+        assertThrows(IllegalArgumentException.class, () -> ChronologerLibraryOptions.builder()
+                .massMatchEpsilon(0.0)
+                .build());
+        assertThrows(IllegalArgumentException.class, () -> ChronologerLibraryOptions.builder()
+                .minimumReportedIntensity(-0.1f)
+                .build());
+    }
 }

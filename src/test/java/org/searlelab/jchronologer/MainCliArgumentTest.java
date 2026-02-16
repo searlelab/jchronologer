@@ -118,7 +118,7 @@ class MainCliArgumentTest {
         TsvTable table = TsvTable.read(output);
         assertEquals(3, table.getHeaders().size());
         assertEquals("Pred_HI", table.getHeaders().get(2));
-        assertEquals(1, table.getRows().size());
+        assertEquals(2, table.getRows().size());
         assertEquals("VATVSLPR", table.getRows().get(0)[0]);
     }
 

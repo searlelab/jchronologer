@@ -9,6 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -54,7 +55,10 @@ class PeptidesOutSmokeTest {
         assertEquals(peptides.size(), result.getAcceptedCount(), "Expected all peptides_out rows to be accepted.");
         assertEquals(0, result.getRejectedCount(), "Expected no rejected rows in peptides_out.");
 
-        Map<Integer, AcceptedPrediction> acceptedByRow = result.getAcceptedByRowIndex();
+        Map<Integer, AcceptedPrediction> acceptedByRow = new HashMap<>();
+        for (AcceptedPrediction accepted : result.getAccepted()) {
+            acceptedByRow.put(accepted.getRowIndex(), accepted);
+        }
 
         double maxAbsError = 0.0d;
         double sumAbsError = 0.0d;

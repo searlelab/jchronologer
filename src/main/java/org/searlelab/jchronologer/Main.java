@@ -14,6 +14,7 @@ import org.searlelab.jchronologer.api.Chronologer;
 import org.searlelab.jchronologer.api.ChronologerOptions;
 import org.searlelab.jchronologer.api.PredictionResult;
 import org.searlelab.jchronologer.impl.ChronologerFactory;
+import org.searlelab.jchronologer.preprocessing.PeptideSequenceConverter;
 import org.searlelab.jchronologer.util.TsvTable;
 
 /**
@@ -26,6 +27,7 @@ import org.searlelab.jchronologer.util.TsvTable;
 public final class Main {
 
     private static final String DEFAULT_PEPTIDE_COLUMN = "PeptideModSeq";
+    private static final double UNIMOD_MASS_MATCH_EPSILON = 1e-5;
 
     private Main() {
     }
@@ -65,7 +67,7 @@ public final class Main {
         InputTable inputTable = readInputTable(cliArgs.input, cliArgs.peptideColumn);
         List<String> peptides = new ArrayList<>(inputTable.rows.size());
         for (String[] row : inputTable.rows) {
-            peptides.add(row[inputTable.peptideColumnIndex]);
+            peptides.add(toChronologerInputSequence(row[inputTable.peptideColumnIndex]));
         }
 
         ChronologerOptions options = ChronologerOptions.builder()
@@ -237,6 +239,7 @@ public final class Main {
         stream.println("Input may be:");
         stream.println("  1) TSV with a peptide column (default: PeptideModSeq), or");
         stream.println("  2) Plain text with one peptide per line.");
+        stream.println("Peptide values may be legacy mass-encoded or terminal-aware UNIMOD.");
         stream.println("Incompatible peptides are dropped.");
         stream.println();
         stream.println("Options:");
@@ -244,6 +247,15 @@ public final class Main {
         stream.println("  --peptide_column <name>   Peptide column name for TSV input (default: "+DEFAULT_PEPTIDE_COLUMN+")");
         stream.println("  --verbose                 Enable detailed startup diagnostics");
         stream.println("  --help, -h                Show this help");
+    }
+
+    private static String toChronologerInputSequence(String peptide) {
+        try {
+            String unimod = PeptideSequenceConverter.normalizeToUnimod(peptide, UNIMOD_MASS_MATCH_EPSILON);
+            return PeptideSequenceConverter.unimodToMassEncoded(unimod);
+        } catch (RuntimeException e) {
+            return peptide;
+        }
     }
 
     /**

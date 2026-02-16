@@ -1,6 +1,8 @@
 package org.searlelab.jchronologer.impl;
 
 import org.searlelab.jchronologer.api.Chronologer;
+import org.searlelab.jchronologer.api.ChronologerLibraryOptions;
+import org.searlelab.jchronologer.api.ChronologerLibraryPredictor;
 import org.searlelab.jchronologer.api.ChronologerOptions;
 
 /**
@@ -30,5 +32,24 @@ public final class ChronologerFactory {
      */
     public static Chronologer create(ChronologerOptions options) {
         return new DefaultChronologer(options);
+    }
+
+    /**
+     * Creates a tandem library predictor with default Chronologer + Cartographer resources.
+     *
+     * @return ready-to-use library predictor
+     */
+    public static ChronologerLibraryPredictor createLibraryPredictorDefault() {
+        return new DefaultChronologerLibraryPredictor(ChronologerLibraryOptions.builder().build());
+    }
+
+    /**
+     * Creates a tandem library predictor with explicit runtime options.
+     *
+     * @param options model/preprocessing resources and batching configuration
+     * @return ready-to-use library predictor
+     */
+    public static ChronologerLibraryPredictor createLibraryPredictor(ChronologerLibraryOptions options) {
+        return new DefaultChronologerLibraryPredictor(options);
     }
 }

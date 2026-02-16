@@ -18,7 +18,6 @@ public final class ChronologerPreprocessor {
     private static final int MIN_PEPTIDE_LEN = 6;
     private static final String E_CYCLO_PATCH = "E[-18.0105647]";
     private static final String C_CYCLO_PATCH = "C[+39.99491463]";
-
     private final CompiledPreprocessingMetadata metadata;
     private final Map<Character, Integer> tokenByResidue;
 
@@ -80,7 +79,6 @@ public final class ChronologerPreprocessor {
         String patched = peptide
                 .replace("E[-18.0]", E_CYCLO_PATCH)
                 .replace("C[-17.0]", C_CYCLO_PATCH);
-
         if (patched.length() >= 13 && patched.substring(1, 13).equals("[+42.010565]")) {
             patched = "[+42.010565]" + patched.charAt(0) + patched.substring(13);
         }

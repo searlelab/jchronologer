@@ -35,9 +35,9 @@ class MainIntegrationTest {
         String output = stdoutBytes.toString(StandardCharsets.UTF_8);
         String[] lines = output.split("\\R");
         assertEquals("PeptideModSeq\tPred_HI", lines[0]);
-        assertEquals(2, lines.length);
+        assertEquals(3, lines.length);
         assertTrue(lines[1].startsWith("VATVSLPR\t"));
-        assertTrue(!output.contains("[42.010565]ACDEFGHIK"));
+        assertTrue(output.contains("[42.010565]ACDEFGHIK"));
     }
 
     @Test
@@ -50,7 +50,7 @@ class MainIntegrationTest {
         assertEquals(0, code);
         TsvTable table = TsvTable.read(output);
         assertTrue(table.getHeaders().contains("Pred_HI"));
-        assertEquals(20, table.getRows().size());
+        assertEquals(21, table.getRows().size());
     }
 
     private static Path copyResourceToTemp(String resource, String suffix) throws IOException {
