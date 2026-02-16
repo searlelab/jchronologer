@@ -29,13 +29,26 @@ class PeptideSequenceConverterTest {
     }
 
     @Test
-    void normalizeMassEncodedMapsLegacyTmtAliasMassToUnimod737() {
-        IllegalArgumentException error = assertThrows(
-                IllegalArgumentException.class,
-                () -> PeptideSequenceConverter.normalizeToUnimod(
-                        "[+224.152478]PEPTIDEK[+224.152478]",
-                        1e-5));
-        assertTrue(error.getMessage().contains("does not map to known UNIMOD ids"));
+    void normalizeMassEncodedHandlesNewUnimodLookups() {
+        String normalized = PeptideSequenceConverter.normalizeToUnimod(
+                "[+100.016044]K[+28.0313]R[+42.04695]K[+224.152478]",
+                1e-5);
+
+        assertEquals("[UNIMOD:64]-K[UNIMOD:36]R[UNIMOD:37]K[UNIMOD:739]-[]", normalized);
+        assertEquals(
+                "[+100.016044]K[+28.031300]R[+42.046950]K[+224.152478]",
+                PeptideSequenceConverter.unimodToMassEncoded(normalized));
+    }
+
+    @Test
+    void normalizeMassEncodedMapsLegacyTmtAliasMassToTmt0() {
+        String normalized = PeptideSequenceConverter.normalizeToUnimod(
+                "[+224.152478]PEPTIDEK[+224.152478]",
+                1e-5);
+
+        assertEquals("[UNIMOD:739]-PEPTIDEK[UNIMOD:739]-[]", normalized);
+        assertEquals("[+224.152478]PEPTIDEK[+224.152478]",
+                PeptideSequenceConverter.unimodToMassEncoded(normalized));
     }
 
     @Test
@@ -44,6 +57,16 @@ class PeptideSequenceConverterTest {
                 IllegalArgumentException.class,
                 () -> PeptideSequenceConverter.normalizeToUnimod(
                         "[+225.155833]PEPTIDEK[+225.155833]",
+                        1e-5));
+        assertTrue(error.getMessage().contains("does not map to known UNIMOD ids"));
+    }
+
+    @Test
+    void normalizeMassEncodedMapsProtonatedLegacyTmtAliasWithWhitespaceToUnimod737() {
+        IllegalArgumentException error = assertThrows(
+                IllegalArgumentException.class,
+                () -> PeptideSequenceConverter.normalizeToUnimod(
+                        "[+\t225.155833]PEPTIDEK[+ 225.155833]",
                         1e-5));
         assertTrue(error.getMessage().contains("does not map to known UNIMOD ids"));
     }

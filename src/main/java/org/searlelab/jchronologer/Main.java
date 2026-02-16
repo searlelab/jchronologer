@@ -239,7 +239,7 @@ public final class Main {
         stream.println("Input may be:");
         stream.println("  1) TSV with a peptide column (default: PeptideModSeq), or");
         stream.println("  2) Plain text with one peptide per line.");
-        stream.println("Peptide values may be legacy mass-encoded or terminal-aware UNIMOD.");
+        stream.println("Peptide values may be mass-encoded or terminal-aware UNIMOD.");
         stream.println("Incompatible peptides are dropped.");
         stream.println();
         stream.println("Options:");

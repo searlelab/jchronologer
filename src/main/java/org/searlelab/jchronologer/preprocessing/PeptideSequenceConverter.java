@@ -14,15 +14,28 @@ import java.util.Set;
  */
 public final class PeptideSequenceConverter {
 
-    private static final String UNIMOD_737 = "UNIMOD:737";
-    private static final String UNIMOD_28 = "UNIMOD:28";
-    private static final String UNIMOD_4 = "UNIMOD:4";
-    private static final Map<String, Double> UNIMOD_MASS_BY_ID = createUnimodMassMap();
+    private static final String TRIMETHYLATION="UNIMOD:37";
+	private static final String DIMETHYLATION="UNIMOD:36";
+	private static final String SUCCINYLATION="UNIMOD:64";
+	private static final String DEAMIDATION="UNIMOD:7";
+	private static final String HEXNAC="UNIMOD:43";
+	private static final String PYROGLUE="UNIMOD:27";
+	private static final String PYROGLU="UNIMOD:28";
+	private static final String METHYLATION="UNIMOD:34";
+	private static final String ACETYLATION="UNIMOD:1";
+	private static final String GLYGLY="UNIMOD:121";
+	private static final String PHOSPHO="UNIMOD:21";
+	private static final String OXIDATION="UNIMOD:35";
+	private static final String CARBAMIDOMETHYL="UNIMOD:4";
+	private static final String TMT0PLEX="UNIMOD:739";
+	private static final String TMT6PLEX="UNIMOD:737";
+	private static final Map<String, Double> UNIMOD_MASS_BY_ID = createUnimodMassMap();
     private static final Set<String> NTERM_COMPATIBLE_UNIMODS = Set.of(
-            UNIMOD_737,
-            "UNIMOD:1",
-            UNIMOD_28,
-            "UNIMOD:27");
+    		TMT6PLEX,
+            ACETYLATION,
+            PYROGLU,
+            PYROGLUE,
+            TMT0PLEX);
 
     private PeptideSequenceConverter() {
     }
@@ -100,13 +113,13 @@ public final class PeptideSequenceConverter {
         }
 
         List<String> firstResidueMods = residueMods.get(0);
-        boolean removedNterm = removeOne(ntermMods, UNIMOD_28);
-        if (removedNterm && firstResidueMods.contains(UNIMOD_4)) {
-            firstResidueMods.add(UNIMOD_28);
+        boolean removedNterm = removeOne(ntermMods, PYROGLU);
+        if (removedNterm && firstResidueMods.contains(CARBAMIDOMETHYL)) {
+            firstResidueMods.add(PYROGLU);
             return;
         }
         if (removedNterm) {
-            ntermMods.add(UNIMOD_28);
+            ntermMods.add(PYROGLU);
         }
     }
 
@@ -363,17 +376,21 @@ public final class PeptideSequenceConverter {
 
     private static Map<String, Double> createUnimodMassMap() {
         Map<String, Double> values = new LinkedHashMap<>();
-        values.put(UNIMOD_737, 229.162932);
-        values.put("UNIMOD:35", 15.994915);
-        values.put("UNIMOD:4", 57.021464);
-        values.put("UNIMOD:21", 79.966331);
-        values.put("UNIMOD:121", 114.042927);
-        values.put("UNIMOD:1", 42.010565);
-        values.put("UNIMOD:34", 14.015650);
-        values.put("UNIMOD:28", -17.026549);
-        values.put("UNIMOD:43", 203.079373);
-        values.put("UNIMOD:7", 0.984016);
-        values.put("UNIMOD:27", -18.010565);
+        values.put(TMT6PLEX, 229.162932);
+        values.put(OXIDATION, 15.994915);
+        values.put(CARBAMIDOMETHYL, 57.021464);
+        values.put(PHOSPHO, 79.966331);
+        values.put(GLYGLY, 114.042927);
+        values.put(ACETYLATION, 42.010565);
+        values.put(METHYLATION, 14.015650);
+        values.put(PYROGLU, -17.026549);
+        values.put(HEXNAC, 203.079373);
+        values.put(DEAMIDATION, 0.984016);
+        values.put(PYROGLUE, -18.010565);
+        values.put(SUCCINYLATION, 100.016044);
+        values.put(DIMETHYLATION, 28.0313);
+        values.put(TRIMETHYLATION, 42.04695);
+        values.put(TMT0PLEX, 224.152478);
         return Collections.unmodifiableMap(values);
     }
 
