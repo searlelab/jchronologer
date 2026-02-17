@@ -6,9 +6,9 @@ package org.searlelab.jchronologer.api;
 public final class ChronologerLibraryOptions {
 
     public static final String DEFAULT_CARTOGRAPHER_MODEL_RESOURCE =
-            "models/Cartographer_20260214222413.torchscript.pt";
+            "models/Cartographer_20260216213651.torchscript.pt";
     public static final String DEFAULT_CARTOGRAPHER_PREPROCESSING_RESOURCE =
-            "models/Cartographer_20260214222413.preprocessing.json";
+            "models/Cartographer_20260216213651.preprocessing.json";
     public static final double DEFAULT_MASS_MATCH_EPSILON = 1e-5;
     public static final float DEFAULT_MINIMUM_REPORTED_INTENSITY = 0.01f;
 

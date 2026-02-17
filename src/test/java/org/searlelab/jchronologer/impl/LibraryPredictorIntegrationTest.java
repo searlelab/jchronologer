@@ -3,6 +3,7 @@ package org.searlelab.jchronologer.impl;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.searlelab.jchronologer.api.ChronologerLibraryEntry;
@@ -11,14 +12,38 @@ import org.searlelab.jchronologer.api.LibraryPredictionRequest;
 import org.searlelab.jchronologer.api.PrecursorCondition;
 
 class LibraryPredictorIntegrationTest {
+	@Test
+	void predictTASEFDSAIAQDK() {
+		ChronologerLibraryPredictor chronologer = ChronologerFactory.createLibraryPredictorDefault();
+
+        List<LibraryPredictionRequest> peptides = new ArrayList<>();
+        List<PrecursorCondition> conditions=new ArrayList<>();
+        conditions.add(new PrecursorCondition((byte)2, 27.0));
+        peptides.add(new LibraryPredictionRequest("TASEFDSAIAQDK", conditions));
+
+        List<ChronologerLibraryEntry> result = chronologer.predict(peptides);
+
+        for (ChronologerLibraryEntry entry : result) {
+        	assertEquals("TASEFDSAIAQDK", entry.getPeptideModSeq());
+        	assertEquals((byte)2, entry.getPrecursorCharge());
+        	assertEquals(691.8253461193799, entry.getPrecursorMz(), 0.0000001);
+        	assertEquals(8.757546, entry.getRetentionTimeInSeconds()/60f, 0.0001);
+        	
+			assertTrue(entry.getMassArray().length>1);
+			
+			for (int i=0; i<entry.getMassArray().length; i++) {
+				System.out.println("\t"+entry.getMassArray()[i]+"\t"+entry.getIntensityArray()[i]);
+			}
+		}
+	}
 
     @Test
     void predictsMultipleChargeNcePairsAndFiltersMissingIons() {
         LibraryPredictionRequest request = new LibraryPredictionRequest(
                 "K[458.325864]PGLAITFAK[229.162932]",
                 List.of(
-                        new PrecursorCondition((byte) 2, 0.30),
-                        new PrecursorCondition((byte) 3, 0.35)));
+                        new PrecursorCondition((byte) 2, 30.0),
+                        new PrecursorCondition((byte) 3, 35.0)));
 
         try (ChronologerLibraryPredictor predictor = ChronologerFactory.createLibraryPredictorDefault()) {
             List<ChronologerLibraryEntry> entries = predictor.predict(List.of(request));

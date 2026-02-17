@@ -35,6 +35,13 @@ public final class DefaultChronologerLibraryPredictor implements ChronologerLibr
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
+    /** Minimum accepted NCE value (standard units, e.g. 20 for 20%). */
+    private static final double MIN_NCE = 10.0;
+    /** Maximum accepted NCE value (standard units, e.g. 50 for 50%). */
+    private static final double MAX_NCE = 60.0;
+    /** Divisor to convert standard NCE to model-normalized NCE (NCE / 100). */
+    private static final double NCE_NORMALIZATION_DIVISOR = 100.0;
+
     private final ChronologerLibraryOptions options;
     private final Chronologer chronologer;
     private final ChronologerPreprocessor tokenPreprocessor;
@@ -56,7 +63,7 @@ public final class DefaultChronologerLibraryPredictor implements ChronologerLibr
 
         this.chronologer = ChronologerFactory.create(chronologerOptions);
         this.tokenPreprocessor = new ChronologerPreprocessor(
-                PreprocessingMetadataLoader.loadFromClasspath(options.getChronologerPreprocessingResource()));
+                PreprocessingMetadataLoader.loadFromClasspath(options.getCartographerPreprocessingResource()));
         this.cartographerPredictor = new CartographerBatchPredictor(options.getCartographerModelResource());
 
         CartographerMetadata metadata = loadCartographerMetadata(options.getCartographerPreprocessingResource());
@@ -111,7 +118,38 @@ public final class DefaultChronologerLibraryPredictor implements ChronologerLibr
         for (Map.Entry<String, String> entry : massByUnimod.entrySet()) {
             String unimod = entry.getKey();
             String massEncoded = entry.getValue();
-            PreprocessingOutcome outcome = tokenPreprocessor.preprocess(massEncoded);
+
+            // Fold first-residue pyroglu to nterm for Cartographer tokenization.
+            // This produces e.g. [-17.026549]QPEPTIDE instead of Q[-17.026549]PEPTIDE,
+            // matching the encoding used during Cartographer training.
+            ParsedUnimodSequence parsed = PeptideSequenceConverter.parseNormalizedUnimod(unimod);
+            List<String> ntermMods = new ArrayList<>(parsed.getPositionMods().get(0));
+            List<List<String>> residueMods = new ArrayList<>(parsed.getResidues().length());
+            for (int ri = 0; ri < parsed.getResidues().length(); ri++) {
+                residueMods.add(new ArrayList<>(parsed.getPositionMods().get(ri + 1)));
+            }
+            PeptideSequenceConverter.foldFirstResiduePyrogluToNterm(
+                    parsed.getResidues(), ntermMods, residueMods);
+            // Rebuild mass-encoded with the fold applied
+            StringBuilder cartographerMassEncoded = new StringBuilder();
+            if (!ntermMods.isEmpty()) {
+                cartographerMassEncoded.append('[')
+                        .append(String.format(java.util.Locale.US, "%+.6f",
+                                PeptideSequenceConverter.sumUnimodMass(ntermMods)))
+                        .append(']');
+            }
+            for (int ri = 0; ri < parsed.getResidues().length(); ri++) {
+                cartographerMassEncoded.append(parsed.getResidues().charAt(ri));
+                List<String> mods = residueMods.get(ri);
+                if (!mods.isEmpty()) {
+                    cartographerMassEncoded.append('[')
+                            .append(String.format(java.util.Locale.US, "%+.6f",
+                                    PeptideSequenceConverter.sumUnimodMass(mods)))
+                            .append(']');
+                }
+            }
+
+            PreprocessingOutcome outcome = tokenPreprocessor.preprocess(cartographerMassEncoded.toString());
             if (!outcome.isAccepted()) {
                 throw new IllegalArgumentException(
                         "Failed to tokenize peptide " + massEncoded + " (normalized " + unimod + "): "
@@ -175,7 +213,7 @@ public final class DefaultChronologerLibraryPredictor implements ChronologerLibr
                 PredictionJob job = batch.get(i);
                 tokenBatch[i] = job.tokenArray;
                 chargeBatch[i][job.charge - minPrecursorCharge] = 1.0f;
-                nceBatch[i][0] = (float) job.nce;
+                nceBatch[i][0] = (float) (job.nce / NCE_NORMALIZATION_DIVISOR);
             }
 
             float[][] predictions = cartographerPredictor.predict(tokenBatch, chargeBatch, nceBatch);
@@ -219,8 +257,14 @@ public final class DefaultChronologerLibraryPredictor implements ChronologerLibr
                     "Precursor charge " + charge + " is outside supported range "
                             + minPrecursorCharge + "-" + maxPrecursorCharge);
         }
-        if (!Double.isFinite(condition.getPrecursorNce())) {
+        double nce = condition.getPrecursorNce();
+        if (!Double.isFinite(nce)) {
             throw new IllegalArgumentException("NCE must be a finite number.");
+        }
+        if (nce < MIN_NCE || nce > MAX_NCE) {
+            throw new IllegalArgumentException(
+                    "NCE " + nce + " is outside the supported range " + MIN_NCE + "-" + MAX_NCE
+                            + ". NCE should be in standard units (e.g. 27.0 for 27%).");
         }
     }
 

@@ -30,20 +30,21 @@ public final class CartographerSpectrumDecoder {
         List<Float> intensityValues = new ArrayList<>();
         List<String> ionTypes = new ArrayList<>();
 
+        // Prosit ion-interleaved layout (stride 6):
+        //   index = (ionNumber - 1) * 6 + channelOffset
+        //   channelOffset: y+1=0, y+2=1, y+3=2, b+1=3, b+2=4, b+3=5
         for (int ionNumber = 1; ionNumber <= MAX_FRAGMENT_ION_NUMBER; ionNumber++) {
-            int baseIndex = (ionNumber - 1) * 6;
-            appendIfPresent(peptide, precursorCharge, ionNumber, true, 1, intensities[baseIndex], minimumReportedIntensity,
-                    peptideLength, massValues, intensityValues, ionTypes);
-            appendIfPresent(peptide, precursorCharge, ionNumber, true, 2, intensities[baseIndex + 1], minimumReportedIntensity,
-                    peptideLength, massValues, intensityValues, ionTypes);
-            appendIfPresent(peptide, precursorCharge, ionNumber, true, 3, intensities[baseIndex + 2], minimumReportedIntensity,
-                    peptideLength, massValues, intensityValues, ionTypes);
-            appendIfPresent(peptide, precursorCharge, ionNumber, false, 1, intensities[baseIndex + 3], minimumReportedIntensity,
-                    peptideLength, massValues, intensityValues, ionTypes);
-            appendIfPresent(peptide, precursorCharge, ionNumber, false, 2, intensities[baseIndex + 4], minimumReportedIntensity,
-                    peptideLength, massValues, intensityValues, ionTypes);
-            appendIfPresent(peptide, precursorCharge, ionNumber, false, 3, intensities[baseIndex + 5], minimumReportedIntensity,
-                    peptideLength, massValues, intensityValues, ionTypes);
+            int base = (ionNumber - 1) * 6;
+            for (int charge = 1; charge <= 3; charge++) {
+                int yIndex = base + (charge - 1);
+                int bIndex = base + 3 + (charge - 1);
+                appendIfPresent(peptide, precursorCharge, ionNumber, true, charge,
+                        intensities[yIndex], minimumReportedIntensity,
+                        peptideLength, massValues, intensityValues, ionTypes);
+                appendIfPresent(peptide, precursorCharge, ionNumber, false, charge,
+                        intensities[bIndex], minimumReportedIntensity,
+                        peptideLength, massValues, intensityValues, ionTypes);
+            }
         }
 
         return new DecodedSpectrum(

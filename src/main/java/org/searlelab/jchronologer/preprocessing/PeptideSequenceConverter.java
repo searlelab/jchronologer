@@ -104,6 +104,32 @@ public final class PeptideSequenceConverter {
         return sum;
     }
 
+    /**
+     * Folds first-residue pyroglu modifications onto the N-terminus.
+     *
+     * <p>Some datasets report pyro-glutamate as a modification on the first residue
+     * (e.g. {@code []-Q[UNIMOD:28]PEPTIDE-[]}) rather than on the N-terminus
+     * ({@code [UNIMOD:28]-QPEPTIDE-[]}). This method normalizes the first form
+     * to the second, which is required for correct Cartographer tokenization.
+     */
+    public static void foldFirstResiduePyrogluToNterm(
+            String residues,
+            List<String> ntermMods,
+            List<List<String>> residueMods) {
+        if (residues.isEmpty() || !ntermMods.isEmpty()) {
+            return;
+        }
+        char firstResidue = residues.charAt(0);
+        List<String> firstMods = residueMods.get(0);
+        if (firstResidue == 'Q' && firstMods.contains(PYROGLU)) {
+            removeOne(firstMods, PYROGLU);
+            ntermMods.add(PYROGLU);
+        } else if (firstResidue == 'E' && firstMods.contains(PYROGLUE)) {
+            removeOne(firstMods, PYROGLUE);
+            ntermMods.add(PYROGLUE);
+        }
+    }
+
     private static void foldNtermPyroCarbamidomethylCysteine(
             String residues,
             List<String> ntermMods,
