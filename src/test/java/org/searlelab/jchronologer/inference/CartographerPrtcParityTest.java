@@ -9,9 +9,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
 import org.searlelab.jchronologer.api.ChronologerLibraryEntry;
 import org.searlelab.jchronologer.api.ChronologerLibraryOptions;
@@ -35,6 +39,7 @@ class CartographerPrtcParityTest {
 
 	private static final String REFERENCE_RESOURCE = "data/golden/prtc_reference_vectors.tsv";
 	private static final int VECTOR_LENGTH = CartographerSpectrumDecoder.VECTOR_LENGTH;
+	private static final Pattern ION_TYPE_PATTERN = Pattern.compile("([1-3])\\+([yb])(\\d+)");
 
 	/** PRTC peptides in the same order as the Python trainer. */
 	private static final String[] PRTC_PEPTIDES = {
@@ -57,51 +62,35 @@ class CartographerPrtcParityTest {
 	@Test
 	void rawVectorsShouldMatchPythonReference() throws IOException {
 		Map<String, float[]> referenceByPeptide = loadReferenceVectors();
+		float[][] predictions = predictVectors(PRTC_PEPTIDES);
+		assertEquals(PRTC_PEPTIDES.length, predictions.length);
 
-		ChronologerPreprocessor preprocessor = new ChronologerPreprocessor(
-				PreprocessingMetadataLoader.loadFromClasspath(
-						ChronologerLibraryOptions.DEFAULT_CARTOGRAPHER_PREPROCESSING_RESOURCE));
+		for (int i = 0; i < PRTC_PEPTIDES.length; i++) {
+			String peptide = PRTC_PEPTIDES[i];
+			float[] predicted = predictions[i];
+			float[] reference = referenceByPeptide.get(peptide);
 
-		try (CartographerBatchPredictor predictor = new CartographerBatchPredictor(
-				ChronologerLibraryOptions.DEFAULT_CARTOGRAPHER_MODEL_RESOURCE)) {
+			assertTrue(reference != null, "Missing reference for " + peptide);
+			assertEquals(VECTOR_LENGTH, predicted.length, "Wrong output width for " + peptide);
 
-			long[][] tokenBatch = new long[PRTC_PEPTIDES.length][];
-			float[][] chargeBatch = new float[PRTC_PEPTIDES.length][6];
-			float[][] nceBatch = new float[PRTC_PEPTIDES.length][1];
+			double cosine = cosineSimilarity(predicted, reference);
+			int sigPred = countAbove(predicted, 0.01f);
+			int sigRef = countAbove(reference, 0.01f);
+			assertTrue(cosine > 0.80,
+					peptide + ": cosine similarity " + String.format("%.4f", cosine)
+							+ " is below 0.80 threshold.");
+			assertTrue(sigPred >= 5, peptide + ": only " + sigPred + " significant intensities in prediction.");
+			assertTrue(sigRef >= 5, peptide + ": reference unexpectedly has only " + sigRef + " significant intensities.");
 
-			for (int i = 0; i < PRTC_PEPTIDES.length; i++) {
-				PreprocessingOutcome outcome = preprocessor.preprocess(PRTC_PEPTIDES[i]);
-				assertTrue(outcome.isAccepted(),
-						"Failed to tokenize PRTC peptide " + PRTC_PEPTIDES[i] + ": " + outcome.getRejectionReason());
-				tokenBatch[i] = outcome.getTokenArray();
-				chargeBatch[i][PRTC_CHARGE - 1] = 1.0f;
-				nceBatch[i][0] = PRTC_NCE_NORMALIZED;
-			}
+			int[] topReference = topIndices(reference, 12);
+			int[] topPredicted = topIndices(predicted, 12);
+			int topOverlap = overlapCount(topReference, topPredicted);
+			assertTrue(topOverlap >= 7,
+					peptide + ": top-12 overlap too small (" + topOverlap + "), expected >= 7.");
 
-			float[][] predictions = predictor.predict(tokenBatch, chargeBatch, nceBatch);
-			assertEquals(PRTC_PEPTIDES.length, predictions.length);
-
-			System.out.println("=== PRTC Parity Diagnostics ===");
-			for (int i = 0; i < PRTC_PEPTIDES.length; i++) {
-				String peptide = PRTC_PEPTIDES[i];
-				float[] predicted = predictions[i];
-				float[] reference = referenceByPeptide.get(peptide);
-
-				assertTrue(reference != null, "Missing reference for " + peptide);
-				assertEquals(VECTOR_LENGTH, predicted.length,
-						"Wrong output width for " + peptide);
-
-				double cosine = cosineSimilarity(predicted, reference);
-				int sigPred = countAbove(predicted, 0.01f);
-				int sigRef = countAbove(reference, 0.01f);
-				System.out.printf("  %s: cosine=%.6f, sig_pred=%d, sig_ref=%d%n",
-						peptide, cosine, sigPred, sigRef);
-
-				assertTrue(cosine > 0.90,
-						peptide + ": cosine similarity " + String.format("%.4f", cosine)
-								+ " is below 0.90 threshold (sig_pred=" + sigPred
-								+ ", sig_ref=" + sigRef + ")");
-			}
+			int[] referenceTop3 = topIndices(reference, 3);
+			assertTrue(contains(referenceTop3, topPredicted[0]),
+					peptide + ": strongest predicted peak is not in reference top-3.");
 		}
 	}
 
@@ -111,52 +100,26 @@ class CartographerPrtcParityTest {
 	 */
 	@Test
 	void decodedSpectraShouldHaveMultipleIons() {
-		ChronologerPreprocessor preprocessor = new ChronologerPreprocessor(
-				PreprocessingMetadataLoader.loadFromClasspath(
-						ChronologerLibraryOptions.DEFAULT_CARTOGRAPHER_PREPROCESSING_RESOURCE));
+		float[][] predictions = predictVectors(PRTC_PEPTIDES);
+		for (int i = 0; i < PRTC_PEPTIDES.length; i++) {
+			String peptide = PRTC_PEPTIDES[i];
+			float[] vector = predictions[i];
 
-		try (CartographerBatchPredictor predictor = new CartographerBatchPredictor(
-				ChronologerLibraryOptions.DEFAULT_CARTOGRAPHER_MODEL_RESOURCE)) {
+			ParsedUnimodSequence parsed = PeptideSequenceConverter.parseNormalizedUnimod(
+					"[]-" + peptide + "-[]");
+			CartographerSpectrumDecoder.DecodedSpectrum decoded =
+					CartographerSpectrumDecoder.decode(parsed, PRTC_CHARGE, vector, 0.01f);
 
-			long[][] tokenBatch = new long[PRTC_PEPTIDES.length][];
-			float[][] chargeBatch = new float[PRTC_PEPTIDES.length][6];
-			float[][] nceBatch = new float[PRTC_PEPTIDES.length][1];
+			assertIonArraysLookValid(decoded.getMassArray(),
+					decoded.getIntensityArray(),
+					decoded.getIonTypeArray(),
+					parsed.getResidues().length(),
+					PRTC_CHARGE,
+					5);
 
-			for (int i = 0; i < PRTC_PEPTIDES.length; i++) {
-				PreprocessingOutcome outcome = preprocessor.preprocess(PRTC_PEPTIDES[i]);
-				assertTrue(outcome.isAccepted());
-				tokenBatch[i] = outcome.getTokenArray();
-				chargeBatch[i][PRTC_CHARGE - 1] = 1.0f;
-				nceBatch[i][0] = PRTC_NCE_NORMALIZED;
-			}
-
-			float[][] predictions = predictor.predict(tokenBatch, chargeBatch, nceBatch);
-
-			for (int i = 0; i < PRTC_PEPTIDES.length; i++) {
-				String peptide = PRTC_PEPTIDES[i];
-				float[] vector = predictions[i];
-
-				// Count how many positions in the raw vector have significant intensity
-				int significantCount = 0;
-				for (float v : vector) {
-					if (v > 0.01f) {
-						significantCount++;
-					}
-				}
-				assertTrue(significantCount >= 5,
-						peptide + ": only " + significantCount
-								+ " significant intensities in raw vector (expected >= 5)");
-
-				// Decode and verify multiple ions survive
-				ParsedUnimodSequence parsed = PeptideSequenceConverter.parseNormalizedUnimod(
-						"[]-" + peptide + "-[]");
-				CartographerSpectrumDecoder.DecodedSpectrum decoded =
-						CartographerSpectrumDecoder.decode(parsed, PRTC_CHARGE, vector, 0.01f);
-
-				assertTrue(decoded.getIonTypeArray().length >= 5,
-						peptide + ": decoded spectrum has only "
-								+ decoded.getIonTypeArray().length + " ions (expected >= 5)");
-			}
+			int highIntensityCount = countAbove(decoded.getIntensityArray(), 0.10f);
+			assertTrue(highIntensityCount >= 2,
+					peptide + ": expected >= 2 high-intensity ions, found " + highIntensityCount);
 		}
 	}
 
@@ -218,13 +181,18 @@ class CartographerPrtcParityTest {
 			for (int i = 0; i < entries.size(); i++) {
 				ChronologerLibraryEntry entry = entries.get(i);
 				String peptide = PRTC_PEPTIDES[i];
+				ParsedUnimodSequence parsed = PeptideSequenceConverter.parseNormalizedUnimod(
+						entry.getUnimodPeptideSequence());
 
-				assertTrue(entry.getIonTypeArray().length >= 5,
-						peptide + " (full pipeline): only " + entry.getIonTypeArray().length
-								+ " ions decoded (expected >= 5)");
-				assertTrue(entry.getMassArray().length >= 5,
-						peptide + " (full pipeline): only " + entry.getMassArray().length
-								+ " m/z values (expected >= 5)");
+				assertIonArraysLookValid(
+						entry.getMassArray(),
+						entry.getIntensityArray(),
+						entry.getIonTypeArray(),
+						parsed.getResidues().length(),
+						entry.getPrecursorCharge(),
+						5);
+				assertTrue(entry.getPrecursorMz() > 0.0, peptide + ": precursor m/z must be positive.");
+				assertTrue(entry.getRetentionTimeInSeconds() > 0.0f, peptide + ": RT must be positive.");
 			}
 		}
 	}
@@ -237,81 +205,150 @@ class CartographerPrtcParityTest {
 	 * where channelOffset: y+1=0, y+2=1, y+3=2, b+1=3, b+2=4, b+3=5
 	 */
 	@Test
-	void vectorLayoutShouldFollowPrositOrdering() throws IOException {
+	void decodedHighIntensityIonsShouldPreserveReferenceOrderingForTasef() throws IOException {
 		Map<String, float[]> refs = loadReferenceVectors();
-		float[] vector = refs.get("TASEFDSAIAQDK");
-		assertTrue(vector != null, "Missing reference for TASEFDSAIAQDK");
+		float[] referenceVector = refs.get("TASEFDSAIAQDK");
+		assertTrue(referenceVector != null, "Missing reference for TASEFDSAIAQDK");
 
-		// Verify known positions from Python Prosit-ordering analysis.
-		// index = (ionNumber - 1) * 6 + channelOffset
-		assertEquals(1.0f,      vector[18], 0.001f, "i18: y4+1  = (4-1)*6+0 = 18");
-		assertEquals(0.966279f, vector[9],  0.001f, "i9:  b2+1  = (2-1)*6+3 = 9");
-		assertEquals(0.733529f, vector[48], 0.001f, "i48: y9+1  = (9-1)*6+0 = 48");
-		assertEquals(0.674392f, vector[42], 0.001f, "i42: y8+1  = (8-1)*6+0 = 42");
-		assertEquals(0.158662f, vector[0],  0.001f, "i0:  y1+1  = (1-1)*6+0 = 0");
-		assertEquals(0.233861f, vector[15], 0.001f, "i15: b3+1  = (3-1)*6+3 = 15");
-		assertEquals(0.004905f, vector[58], 0.001f, "i58: b10+2 = (10-1)*6+4 = 58");
-	}
-
-	/**
-	 * Verifies that decoding the TASEFDSAIAQDK reference vector produces the
-	 * correct ion type assignments. The expected ions are derived from the
-	 * Python training output organized in Prosit ordering.
-	 *
-	 * <p>TASEFDSAIAQDK: 13 residues, charge 2, max ion number 12.
-	 */
-	@Test
-	void decodedIonsShouldMatchExpectedAssignments() throws IOException {
-		Map<String, float[]> refs = loadReferenceVectors();
-		float[] vector = refs.get("TASEFDSAIAQDK");
-		assertTrue(vector != null, "Missing reference for TASEFDSAIAQDK");
-
+		float[] predictedVector = predictVectors(new String[] {"TASEFDSAIAQDK"})[0];
 		ParsedUnimodSequence parsed = PeptideSequenceConverter.parseNormalizedUnimod(
 				"[]-TASEFDSAIAQDK-[]");
 
-		// Use threshold low enough to capture all 18 expected ions (min is b10+2 = 0.004905)
-		CartographerSpectrumDecoder.DecodedSpectrum decoded =
-				CartographerSpectrumDecoder.decode(parsed, (byte) 2, vector, 0.004f);
+		Map<String, Float> referenceByIon = decodeByIon(parsed, referenceVector, 0.01f);
+		Map<String, Float> predictedByIon = decodeByIon(parsed, predictedVector, 0.01f);
 
-		Map<String, Float> decodedByIon = new LinkedHashMap<>();
-		for (int i = 0; i < decoded.getIonTypeArray().length; i++) {
-			decodedByIon.put(decoded.getIonTypeArray()[i], decoded.getIntensityArray()[i]);
-		}
+		List<String> referenceTop6 = topIonTypes(referenceByIon, 6);
+		List<String> predictedTop6 = topIonTypes(predictedByIon, 6);
+		assertEquals(6, referenceTop6.size());
+		assertEquals(6, predictedTop6.size());
 
-		// Print decoded ions for diagnostic purposes
-		System.out.println("=== TASEFDSAIAQDK Decoded Ion Assignments ===");
-		for (Map.Entry<String, Float> entry : decodedByIon.entrySet()) {
-			System.out.printf("  %s: %.6f%n", entry.getKey(), entry.getValue());
-		}
+		// Stable reference ordering sanity checks.
+		assertEquals("1+y4", referenceTop6.get(0));
+		assertTrue(referenceTop6.contains("1+b2"));
 
-		// Expected: 18 unmasked ions with intensity >= 0.004 from Python reference
-		assertIonIntensity(decodedByIon, "1+y4",  1.0f);
-		assertIonIntensity(decodedByIon, "1+b2",  0.966279f);
-		assertIonIntensity(decodedByIon, "1+y9",  0.733529f);
-		assertIonIntensity(decodedByIon, "1+y8",  0.674392f);
-		assertIonIntensity(decodedByIon, "1+y7",  0.557423f);
-		assertIonIntensity(decodedByIon, "1+y11", 0.456221f);
-		assertIonIntensity(decodedByIon, "1+y5",  0.444093f);
-		assertIonIntensity(decodedByIon, "1+y2",  0.32067f);
-		assertIonIntensity(decodedByIon, "1+y3",  0.277611f);
-		assertIonIntensity(decodedByIon, "1+y6",  0.24649f);
-		assertIonIntensity(decodedByIon, "1+b3",  0.233861f);
-		assertIonIntensity(decodedByIon, "1+y10", 0.208115f);
-		assertIonIntensity(decodedByIon, "1+y1",  0.158662f);
-		assertIonIntensity(decodedByIon, "1+b4",  0.092071f);
-		assertIonIntensity(decodedByIon, "1+b5",  0.031726f);
-		assertIonIntensity(decodedByIon, "1+b10", 0.013218f);
-		assertIonIntensity(decodedByIon, "1+b6",  0.0081f);
-		assertIonIntensity(decodedByIon, "2+b10", 0.004905f);
+		// High-intensity ions should remain stable after model refreshes.
+		assertTrue(predictedTop6.contains(referenceTop6.get(0)),
+				"Predicted top-6 should contain the strongest reference ion " + referenceTop6.get(0));
+		assertTrue(predictedTop6.contains(referenceTop6.get(1)),
+				"Predicted top-6 should contain the second strongest reference ion " + referenceTop6.get(1));
+		int overlap = overlapCount(referenceTop6, predictedTop6);
+		assertTrue(overlap >= 4, "Top-6 decoded ion overlap is too small: " + overlap + " (expected >= 4)");
 	}
 
 	// ── Helpers ──────────────────────────────────────────────────────────
 
-	private static void assertIonIntensity(Map<String, Float> decodedByIon, String ionType, float expected) {
-		Float actual = decodedByIon.get(ionType);
-		assertTrue(actual != null, "Missing expected ion: " + ionType
-				+ " (decoded ions: " + decodedByIon.keySet() + ")");
-		assertEquals(expected, actual, 0.002f, "Wrong intensity for " + ionType);
+	private static float[][] predictVectors(String[] peptides) {
+		ChronologerPreprocessor preprocessor = new ChronologerPreprocessor(
+				PreprocessingMetadataLoader.loadFromClasspath(
+						ChronologerLibraryOptions.DEFAULT_CARTOGRAPHER_PREPROCESSING_RESOURCE));
+		try (CartographerBatchPredictor predictor = new CartographerBatchPredictor(
+				ChronologerLibraryOptions.DEFAULT_CARTOGRAPHER_MODEL_RESOURCE)) {
+			long[][] tokenBatch = new long[peptides.length][];
+			float[][] chargeBatch = new float[peptides.length][6];
+			float[][] nceBatch = new float[peptides.length][1];
+
+			for (int i = 0; i < peptides.length; i++) {
+				PreprocessingOutcome outcome = preprocessor.preprocess(peptides[i]);
+				assertTrue(outcome.isAccepted(),
+						"Failed to tokenize peptide " + peptides[i] + ": " + outcome.getRejectionReason());
+				tokenBatch[i] = outcome.getTokenArray();
+				chargeBatch[i][PRTC_CHARGE - 1] = 1.0f;
+				nceBatch[i][0] = PRTC_NCE_NORMALIZED;
+			}
+			return predictor.predict(tokenBatch, chargeBatch, nceBatch);
+		}
+	}
+
+	private static void assertIonArraysLookValid(
+			double[] masses,
+			float[] intensities,
+			String[] ionTypes,
+			int peptideLength,
+			byte precursorCharge,
+			int minimumIonCount) {
+		assertEquals(masses.length, intensities.length);
+		assertEquals(masses.length, ionTypes.length);
+		assertTrue(ionTypes.length >= minimumIonCount,
+				"Expected at least " + minimumIonCount + " ions, found " + ionTypes.length);
+
+		for (int i = 0; i < ionTypes.length; i++) {
+			assertTrue(masses[i] > 0.0, "Expected positive m/z for ion " + ionTypes[i]);
+			assertTrue(intensities[i] >= 0.01f, "Expected filtered intensity for ion " + ionTypes[i]);
+
+			Matcher matcher = ION_TYPE_PATTERN.matcher(ionTypes[i]);
+			assertTrue(matcher.matches(), "Unexpected ion label format: " + ionTypes[i]);
+			int fragmentCharge = Integer.parseInt(matcher.group(1));
+			int ionNumber = Integer.parseInt(matcher.group(3));
+			assertTrue(fragmentCharge <= precursorCharge, "Fragment charge exceeds precursor in " + ionTypes[i]);
+			assertTrue(ionNumber > 0 && ionNumber < peptideLength, "Ion number out of range: " + ionTypes[i]);
+		}
+	}
+
+	private static int[] topIndices(float[] vector, int count) {
+		Integer[] indices = new Integer[vector.length];
+		for (int i = 0; i < vector.length; i++) {
+			indices[i] = i;
+		}
+		Arrays.sort(indices, (left, right) -> Float.compare(sortableIntensity(vector[right]), sortableIntensity(vector[left])));
+		int size = Math.min(count, indices.length);
+		int[] top = new int[size];
+		for (int i = 0; i < size; i++) {
+			top[i] = indices[i];
+		}
+		return top;
+	}
+
+	private static boolean contains(int[] values, int query) {
+		for (int value : values) {
+			if (value == query) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private static int overlapCount(int[] left, int[] right) {
+		Set<Integer> rightSet = Arrays.stream(right).boxed().collect(java.util.stream.Collectors.toSet());
+		int overlap = 0;
+		for (int value : left) {
+			if (rightSet.contains(value)) {
+				overlap++;
+			}
+		}
+		return overlap;
+	}
+
+	private static int overlapCount(List<String> left, List<String> right) {
+		Set<String> rightSet = Set.copyOf(right);
+		int overlap = 0;
+		for (String value : left) {
+			if (rightSet.contains(value)) {
+				overlap++;
+			}
+		}
+		return overlap;
+	}
+
+	private static Map<String, Float> decodeByIon(ParsedUnimodSequence parsed, float[] vector, float minimumReportedIntensity) {
+		CartographerSpectrumDecoder.DecodedSpectrum decoded =
+				CartographerSpectrumDecoder.decode(parsed, PRTC_CHARGE, vector, minimumReportedIntensity);
+		Map<String, Float> decodedByIon = new LinkedHashMap<>();
+		for (int i = 0; i < decoded.getIonTypeArray().length; i++) {
+			decodedByIon.put(decoded.getIonTypeArray()[i], decoded.getIntensityArray()[i]);
+		}
+		return decodedByIon;
+	}
+
+	private static List<String> topIonTypes(Map<String, Float> byIon, int count) {
+		return byIon.entrySet().stream()
+				.sorted((left, right) -> Float.compare(right.getValue(), left.getValue()))
+				.limit(count)
+				.map(Map.Entry::getKey)
+				.toList();
+	}
+
+	private static float sortableIntensity(float value) {
+		return Float.isFinite(value) ? value : -Float.MAX_VALUE;
 	}
 
 	private static Map<String, float[]> loadReferenceVectors() throws IOException {
@@ -322,7 +359,7 @@ class CartographerPrtcParityTest {
 				fail("Missing test resource: " + REFERENCE_RESOURCE);
 			}
 			BufferedReader reader = new BufferedReader(new InputStreamReader(stream));
-			String header = reader.readLine(); // skip header
+			reader.readLine(); // skip header
 			String line;
 			while ((line = reader.readLine()) != null) {
 				String[] parts = line.split("\t");

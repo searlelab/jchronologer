@@ -1,0 +1,5 @@
+{
+  "min_precursor_charge": 2,
+  "max_precursor_charge": 5,
+  "output_shape": ["batch", 222]
+}

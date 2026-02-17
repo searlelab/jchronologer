@@ -1,6 +1,7 @@
 package org.searlelab.jchronologer.inference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Arrays;
@@ -28,6 +29,14 @@ class CartographerSpectrumDecoderTest {
         float[] v = new float[CartographerSpectrumDecoder.VECTOR_LENGTH];
         Arrays.fill(v, -1.0f);
         return v;
+    }
+
+    @Test
+    void decodeRejectsUnexpectedVectorLength() {
+        ParsedUnimodSequence peptide = PeptideSequenceConverter.parseNormalizedUnimod("[]-PEPTIDE-[]");
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> CartographerSpectrumDecoder.decode(peptide, (byte) 2, new float[10], 0.01f));
     }
 
     // ── Original smoke test ──────────────────────────────────────────────
