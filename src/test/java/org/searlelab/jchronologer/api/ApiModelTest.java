@@ -217,9 +217,24 @@ class ApiModelTest {
                 List.of(condition));
 
         assertEquals("PEPTIDE", request.getPeptideSequence());
+        assertEquals(true, request.usesExplicitPrecursorConditions());
+        assertEquals(false, request.usesAutomaticChargeSelection());
         assertEquals(1, request.getPrecursorConditions().size());
         assertEquals((byte) 2, request.getPrecursorConditions().get(0).getPrecursorCharge());
         assertEquals(0.3, request.getPrecursorConditions().get(0).getPrecursorNce());
+        assertThrows(UnsupportedOperationException.class, () -> request.getPrecursorConditions().clear());
+    }
+
+    @Test
+    void libraryPredictionRequestSupportsAutomaticChargeSelectionMode() {
+        LibraryPredictionRequest request = new LibraryPredictionRequest("PEPTIDE", 27.0, 0.05);
+
+        assertEquals("PEPTIDE", request.getPeptideSequence());
+        assertEquals(false, request.usesExplicitPrecursorConditions());
+        assertEquals(true, request.usesAutomaticChargeSelection());
+        assertEquals(27.0, request.getPrecursorNce());
+        assertEquals(0.05, request.getMinimumChargeProbability());
+        assertEquals(0, request.getPrecursorConditions().size());
         assertThrows(UnsupportedOperationException.class, () -> request.getPrecursorConditions().clear());
     }
 
@@ -232,6 +247,12 @@ class ApiModelTest {
         assertEquals(
                 ChronologerLibraryOptions.DEFAULT_CARTOGRAPHER_PREPROCESSING_RESOURCE,
                 defaults.getCartographerPreprocessingResource());
+        assertEquals(
+                ChronologerLibraryOptions.DEFAULT_ELECTRICIAN_MODEL_RESOURCE,
+                defaults.getElectricianModelResource());
+        assertEquals(
+                ChronologerLibraryOptions.DEFAULT_ELECTRICIAN_PREPROCESSING_RESOURCE,
+                defaults.getElectricianPreprocessingResource());
         assertEquals(ChronologerLibraryOptions.DEFAULT_MASS_MATCH_EPSILON, defaults.getMassMatchEpsilon());
         assertEquals(
                 ChronologerLibraryOptions.DEFAULT_MINIMUM_REPORTED_INTENSITY,
@@ -242,6 +263,12 @@ class ApiModelTest {
                 .build());
         assertThrows(IllegalArgumentException.class, () -> ChronologerLibraryOptions.builder()
                 .minimumReportedIntensity(-0.1f)
+                .build());
+        assertThrows(IllegalArgumentException.class, () -> ChronologerLibraryOptions.builder()
+                .electricianModelResource(" ")
+                .build());
+        assertThrows(IllegalArgumentException.class, () -> ChronologerLibraryOptions.builder()
+                .electricianPreprocessingResource(null)
                 .build());
     }
 }

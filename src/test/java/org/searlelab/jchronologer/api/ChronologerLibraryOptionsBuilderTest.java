@@ -15,6 +15,8 @@ class ChronologerLibraryOptionsBuilderTest {
                 .chronologerPreprocessingResource("models/chronologer-custom.json")
                 .cartographerModelResource("models/cartographer-custom.pt")
                 .cartographerPreprocessingResource("models/cartographer-custom.json")
+                .electricianModelResource("models/electrician-custom.pt")
+                .electricianPreprocessingResource("models/electrician-custom.json")
                 .batchSize(321)
                 .cartographerBatchSize(123)
                 .inferenceThreads(4)
@@ -27,6 +29,8 @@ class ChronologerLibraryOptionsBuilderTest {
         assertEquals("models/chronologer-custom.json", options.getChronologerPreprocessingResource());
         assertEquals("models/cartographer-custom.pt", options.getCartographerModelResource());
         assertEquals("models/cartographer-custom.json", options.getCartographerPreprocessingResource());
+        assertEquals("models/electrician-custom.pt", options.getElectricianModelResource());
+        assertEquals("models/electrician-custom.json", options.getElectricianPreprocessingResource());
         assertEquals(321, options.getBatchSize());
         assertEquals(123, options.getCartographerBatchSize());
         assertEquals(4, options.getInferenceThreads());
@@ -63,6 +67,20 @@ class ChronologerLibraryOptionsBuilderTest {
                 .build());
         assertThrows(IllegalArgumentException.class, () -> ChronologerLibraryOptions.builder()
                 .cartographerPreprocessingResource(" ")
+                .build());
+
+        assertThrows(IllegalArgumentException.class, () -> ChronologerLibraryOptions.builder()
+                .electricianModelResource(null)
+                .build());
+        assertThrows(IllegalArgumentException.class, () -> ChronologerLibraryOptions.builder()
+                .electricianModelResource(" ")
+                .build());
+
+        assertThrows(IllegalArgumentException.class, () -> ChronologerLibraryOptions.builder()
+                .electricianPreprocessingResource(null)
+                .build());
+        assertThrows(IllegalArgumentException.class, () -> ChronologerLibraryOptions.builder()
+                .electricianPreprocessingResource(" ")
                 .build());
     }
 

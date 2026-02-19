@@ -15,7 +15,7 @@ class DefaultChronologerLibraryPredictorCoverageTest {
 
     @Test
     void loadCartographerMetadataParsesCustomValues() throws Exception {
-        Object metadata = invokeLoadMetadata("data/preprocessing/cartographer_metadata_custom.json");
+        Object metadata = invokeLoadCartographerMetadata("data/preprocessing/cartographer_metadata_custom.json");
 
         assertEquals(2, getIntField(metadata, "minPrecursorCharge"));
         assertEquals(5, getIntField(metadata, "maxPrecursorCharge"));
@@ -24,7 +24,7 @@ class DefaultChronologerLibraryPredictorCoverageTest {
 
     @Test
     void loadCartographerMetadataUsesDefaultsWhenFieldsMissing() throws Exception {
-        Object metadata = invokeLoadMetadata("data/preprocessing/cartographer_metadata_minimal.json");
+        Object metadata = invokeLoadCartographerMetadata("data/preprocessing/cartographer_metadata_minimal.json");
 
         assertEquals(1, getIntField(metadata, "minPrecursorCharge"));
         assertEquals(6, getIntField(metadata, "maxPrecursorCharge"));
@@ -33,7 +33,7 @@ class DefaultChronologerLibraryPredictorCoverageTest {
 
     @Test
     void loadCartographerMetadataRejectsMissingResource() throws Exception {
-        Method method = loadMetadataMethod();
+        Method method = loadCartographerMetadataMethod();
         InvocationTargetException error = assertThrows(
                 InvocationTargetException.class,
                 () -> method.invoke(null, "data/preprocessing/does_not_exist.json"));
@@ -44,7 +44,7 @@ class DefaultChronologerLibraryPredictorCoverageTest {
 
     @Test
     void loadCartographerMetadataWrapsMalformedJson() throws Exception {
-        Method method = loadMetadataMethod();
+        Method method = loadCartographerMetadataMethod();
         InvocationTargetException error = assertThrows(
                 InvocationTargetException.class,
                 () -> method.invoke(null, "data/preprocessing/cartographer_metadata_malformed.json"));
@@ -53,14 +53,63 @@ class DefaultChronologerLibraryPredictorCoverageTest {
         assertTrue(cause.getMessage().contains("Failed to parse cartographer metadata resource"));
     }
 
-    private static Object invokeLoadMetadata(String resource) throws Exception {
-        Method method = loadMetadataMethod();
+    @Test
+    void loadElectricianMetadataParsesCustomOutputWidth() throws Exception {
+        Object metadata = invokeLoadElectricianMetadata("data/preprocessing/cartographer_metadata_custom.json");
+
+        assertEquals(222, getIntField(metadata, "outputWidth"));
+    }
+
+    @Test
+    void loadElectricianMetadataUsesDefaultWhenFieldsMissing() throws Exception {
+        Object metadata = invokeLoadElectricianMetadata("data/preprocessing/cartographer_metadata_minimal.json");
+
+        assertEquals(6, getIntField(metadata, "outputWidth"));
+    }
+
+    @Test
+    void loadElectricianMetadataRejectsMissingResource() throws Exception {
+        Method method = loadElectricianMetadataMethod();
+        InvocationTargetException error = assertThrows(
+                InvocationTargetException.class,
+                () -> method.invoke(null, "data/preprocessing/does_not_exist.json"));
+
+        IllegalArgumentException cause = assertInstanceOf(IllegalArgumentException.class, error.getCause());
+        assertTrue(cause.getMessage().contains("Missing electrician metadata resource"));
+    }
+
+    @Test
+    void loadElectricianMetadataWrapsMalformedJson() throws Exception {
+        Method method = loadElectricianMetadataMethod();
+        InvocationTargetException error = assertThrows(
+                InvocationTargetException.class,
+                () -> method.invoke(null, "data/preprocessing/cartographer_metadata_malformed.json"));
+
+        IllegalStateException cause = assertInstanceOf(IllegalStateException.class, error.getCause());
+        assertTrue(cause.getMessage().contains("Failed to parse electrician metadata resource"));
+    }
+
+    private static Object invokeLoadCartographerMetadata(String resource) throws Exception {
+        Method method = loadCartographerMetadataMethod();
         return method.invoke(null, resource);
     }
 
-    private static Method loadMetadataMethod() throws NoSuchMethodException {
+    private static Object invokeLoadElectricianMetadata(String resource) throws Exception {
+        Method method = loadElectricianMetadataMethod();
+        return method.invoke(null, resource);
+    }
+
+    private static Method loadCartographerMetadataMethod() throws NoSuchMethodException {
         Method method = DefaultChronologerLibraryPredictor.class.getDeclaredMethod(
                 "loadCartographerMetadata",
+                String.class);
+        method.setAccessible(true);
+        return method;
+    }
+
+    private static Method loadElectricianMetadataMethod() throws NoSuchMethodException {
+        Method method = DefaultChronologerLibraryPredictor.class.getDeclaredMethod(
+                "loadElectricianMetadata",
                 String.class);
         method.setAccessible(true);
         return method;

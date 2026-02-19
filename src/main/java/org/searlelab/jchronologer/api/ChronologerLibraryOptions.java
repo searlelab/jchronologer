@@ -9,6 +9,10 @@ public final class ChronologerLibraryOptions {
             "models/Cartographer_20260216213651.torchscript.pt";
     public static final String DEFAULT_CARTOGRAPHER_PREPROCESSING_RESOURCE =
             "models/Cartographer_20260216213651.preprocessing.json";
+    public static final String DEFAULT_ELECTRICIAN_MODEL_RESOURCE =
+            "models/Electrician_20260218214005.torchscript.pt";
+    public static final String DEFAULT_ELECTRICIAN_PREPROCESSING_RESOURCE =
+            "models/Electrician_20260218214005.preprocessing.json";
     public static final double DEFAULT_MASS_MATCH_EPSILON = 1e-5;
     public static final float DEFAULT_MINIMUM_REPORTED_INTENSITY = 0.01f;
 
@@ -16,6 +20,8 @@ public final class ChronologerLibraryOptions {
     private final String chronologerPreprocessingResource;
     private final String cartographerModelResource;
     private final String cartographerPreprocessingResource;
+    private final String electricianModelResource;
+    private final String electricianPreprocessingResource;
     private final int batchSize;
     private final int cartographerBatchSize;
     private final int inferenceThreads;
@@ -28,6 +34,8 @@ public final class ChronologerLibraryOptions {
         this.chronologerPreprocessingResource = builder.chronologerPreprocessingResource;
         this.cartographerModelResource = builder.cartographerModelResource;
         this.cartographerPreprocessingResource = builder.cartographerPreprocessingResource;
+        this.electricianModelResource = builder.electricianModelResource;
+        this.electricianPreprocessingResource = builder.electricianPreprocessingResource;
         this.batchSize = builder.batchSize;
         this.cartographerBatchSize = builder.cartographerBatchSize;
         this.inferenceThreads = builder.inferenceThreads;
@@ -54,6 +62,14 @@ public final class ChronologerLibraryOptions {
 
     public String getCartographerPreprocessingResource() {
         return cartographerPreprocessingResource;
+    }
+
+    public String getElectricianModelResource() {
+        return electricianModelResource;
+    }
+
+    public String getElectricianPreprocessingResource() {
+        return electricianPreprocessingResource;
     }
 
     public int getBatchSize() {
@@ -85,6 +101,8 @@ public final class ChronologerLibraryOptions {
         private String chronologerPreprocessingResource = ChronologerOptions.DEFAULT_PREPROCESSING_RESOURCE;
         private String cartographerModelResource = DEFAULT_CARTOGRAPHER_MODEL_RESOURCE;
         private String cartographerPreprocessingResource = DEFAULT_CARTOGRAPHER_PREPROCESSING_RESOURCE;
+        private String electricianModelResource = DEFAULT_ELECTRICIAN_MODEL_RESOURCE;
+        private String electricianPreprocessingResource = DEFAULT_ELECTRICIAN_PREPROCESSING_RESOURCE;
         private int batchSize = ChronologerOptions.DEFAULT_BATCH_SIZE;
         private int cartographerBatchSize = ChronologerOptions.DEFAULT_BATCH_SIZE;
         private int inferenceThreads = ChronologerOptions.DEFAULT_INFERENCE_THREADS;
@@ -112,6 +130,16 @@ public final class ChronologerLibraryOptions {
 
         public Builder cartographerPreprocessingResource(String cartographerPreprocessingResource) {
             this.cartographerPreprocessingResource = cartographerPreprocessingResource;
+            return this;
+        }
+
+        public Builder electricianModelResource(String electricianModelResource) {
+            this.electricianModelResource = electricianModelResource;
+            return this;
+        }
+
+        public Builder electricianPreprocessingResource(String electricianPreprocessingResource) {
+            this.electricianPreprocessingResource = electricianPreprocessingResource;
             return this;
         }
 
@@ -157,6 +185,12 @@ public final class ChronologerLibraryOptions {
             }
             if (cartographerPreprocessingResource == null || cartographerPreprocessingResource.isBlank()) {
                 throw new IllegalArgumentException("Cartographer preprocessing resource must be non-empty.");
+            }
+            if (electricianModelResource == null || electricianModelResource.isBlank()) {
+                throw new IllegalArgumentException("Electrician model resource must be non-empty.");
+            }
+            if (electricianPreprocessingResource == null || electricianPreprocessingResource.isBlank()) {
+                throw new IllegalArgumentException("Electrician preprocessing resource must be non-empty.");
             }
             if (batchSize <= 0) {
                 throw new IllegalArgumentException("Batch size must be positive.");

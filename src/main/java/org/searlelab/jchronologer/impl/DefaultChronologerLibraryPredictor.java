@@ -7,6 +7,7 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import org.searlelab.jchronologer.api.AcceptedPrediction;
 import org.searlelab.jchronologer.api.Chronologer;
@@ -21,6 +22,7 @@ import org.searlelab.jchronologer.api.RejectedPrediction;
 import org.searlelab.jchronologer.inference.CartographerBatchPredictor;
 import org.searlelab.jchronologer.inference.CartographerSpectrumDecoder;
 import org.searlelab.jchronologer.inference.CartographerSpectrumDecoder.DecodedSpectrum;
+import org.searlelab.jchronologer.inference.ElectricianBatchPredictor;
 import org.searlelab.jchronologer.inference.PeptideMassCalculator;
 import org.searlelab.jchronologer.preprocessing.ChronologerPreprocessor;
 import org.searlelab.jchronologer.preprocessing.PeptideSequenceConverter;
@@ -41,14 +43,18 @@ public final class DefaultChronologerLibraryPredictor implements ChronologerLibr
     private static final double MAX_NCE = 60.0;
     /** Divisor to convert standard NCE to model-normalized NCE (NCE / 100). */
     private static final double NCE_NORMALIZATION_DIVISOR = 100.0;
+    /** Number of Electrician outputs corresponding to z=1..6. */
+    private static final int ELECTRICIAN_CHARGE_STATE_COUNT = 6;
 
     private final ChronologerLibraryOptions options;
     private final Chronologer chronologer;
     private final ChronologerPreprocessor tokenPreprocessor;
     private final CartographerBatchPredictor cartographerPredictor;
+    private final ElectricianBatchPredictor electricianPredictor;
     private final int minPrecursorCharge;
     private final int maxPrecursorCharge;
     private final int cartographerOutputWidth;
+    private final int electricianOutputWidth;
     private volatile boolean closed;
 
     public DefaultChronologerLibraryPredictor(ChronologerLibraryOptions options) {
@@ -65,11 +71,22 @@ public final class DefaultChronologerLibraryPredictor implements ChronologerLibr
         this.tokenPreprocessor = new ChronologerPreprocessor(
                 PreprocessingMetadataLoader.loadFromClasspath(options.getCartographerPreprocessingResource()));
         this.cartographerPredictor = new CartographerBatchPredictor(options.getCartographerModelResource());
+        this.electricianPredictor = new ElectricianBatchPredictor(options.getElectricianModelResource());
 
-        CartographerMetadata metadata = loadCartographerMetadata(options.getCartographerPreprocessingResource());
-        this.minPrecursorCharge = metadata.minPrecursorCharge;
-        this.maxPrecursorCharge = metadata.maxPrecursorCharge;
-        this.cartographerOutputWidth = metadata.outputWidth;
+        CartographerMetadata cartographerMetadata = loadCartographerMetadata(options.getCartographerPreprocessingResource());
+        this.minPrecursorCharge = cartographerMetadata.minPrecursorCharge;
+        this.maxPrecursorCharge = cartographerMetadata.maxPrecursorCharge;
+        this.cartographerOutputWidth = cartographerMetadata.outputWidth;
+
+        ElectricianMetadata electricianMetadata = loadElectricianMetadata(options.getElectricianPreprocessingResource());
+        this.electricianOutputWidth = electricianMetadata.outputWidth;
+        if (this.electricianOutputWidth != ELECTRICIAN_CHARGE_STATE_COUNT) {
+            throw new IllegalStateException(
+                    "Unexpected Electrician metadata output width: "
+                            + this.electricianOutputWidth
+                            + " expected="
+                            + ELECTRICIAN_CHARGE_STATE_COUNT);
+        }
     }
 
     @Override
@@ -94,22 +111,31 @@ public final class DefaultChronologerLibraryPredictor implements ChronologerLibr
             if (request == null) {
                 throw new IllegalArgumentException("Request at index " + i + " is null.");
             }
-            if (request.getPrecursorConditions().isEmpty()) {
-                throw new IllegalArgumentException("Request at index " + i + " has no precursor conditions.");
-            }
 
             String normalizedUnimod = PeptideSequenceConverter.normalizeToUnimod(
                     request.getPeptideSequence(),
                     options.getMassMatchEpsilon());
             String massEncoded = PeptideSequenceConverter.unimodToMassEncoded(normalizedUnimod);
 
-            List<PrecursorCondition> validatedConditions = new ArrayList<>(request.getPrecursorConditions().size());
-            for (PrecursorCondition condition : request.getPrecursorConditions()) {
-                validateCondition(condition);
-                validatedConditions.add(condition);
+            if (request.usesAutomaticChargeSelection()) {
+                validateAutomaticRequest(request.getPrecursorNce(), request.getMinimumChargeProbability());
+                normalizedRequests.add(NormalizedRequest.automatic(
+                        normalizedUnimod,
+                        request.getPrecursorNce(),
+                        request.getMinimumChargeProbability()));
+            } else {
+                if (request.getPrecursorConditions().isEmpty()) {
+                    throw new IllegalArgumentException("Request at index " + i + " has no precursor conditions.");
+                }
+
+                List<PrecursorCondition> validatedConditions = new ArrayList<>(request.getPrecursorConditions().size());
+                for (PrecursorCondition condition : request.getPrecursorConditions()) {
+                    validateCondition(condition);
+                    validatedConditions.add(condition);
+                }
+                normalizedRequests.add(NormalizedRequest.explicit(normalizedUnimod, validatedConditions));
             }
 
-            normalizedRequests.add(new NormalizedRequest(normalizedUnimod, validatedConditions));
             massByUnimod.putIfAbsent(normalizedUnimod, massEncoded);
         }
 
@@ -130,12 +156,11 @@ public final class DefaultChronologerLibraryPredictor implements ChronologerLibr
             }
             PeptideSequenceConverter.foldFirstResiduePyrogluToNterm(
                     parsed.getResidues(), ntermMods, residueMods);
-            // Rebuild mass-encoded with the fold applied
+            // Rebuild mass-encoded with the fold applied.
             StringBuilder cartographerMassEncoded = new StringBuilder();
             if (!ntermMods.isEmpty()) {
                 cartographerMassEncoded.append('[')
-                        .append(String.format(java.util.Locale.US, "%+.6f",
-                                PeptideSequenceConverter.sumUnimodMass(ntermMods)))
+                        .append(String.format(Locale.US, "%+.6f", PeptideSequenceConverter.sumUnimodMass(ntermMods)))
                         .append(']');
             }
             for (int ri = 0; ri < parsed.getResidues().length(); ri++) {
@@ -143,8 +168,7 @@ public final class DefaultChronologerLibraryPredictor implements ChronologerLibr
                 List<String> mods = residueMods.get(ri);
                 if (!mods.isEmpty()) {
                     cartographerMassEncoded.append('[')
-                            .append(String.format(java.util.Locale.US, "%+.6f",
-                                    PeptideSequenceConverter.sumUnimodMass(mods)))
+                            .append(String.format(Locale.US, "%+.6f", PeptideSequenceConverter.sumUnimodMass(mods)))
                             .append(']');
                 }
             }
@@ -174,6 +198,8 @@ public final class DefaultChronologerLibraryPredictor implements ChronologerLibr
             predHiByMass.put(accepted.getPeptideModSeq(), accepted.getPredHi());
         }
 
+        Map<String, float[]> chargeDistributionByUnimod = inferChargeDistributions(normalizedRequests, tokenByUnimod);
+
         LinkedHashMap<String, ParsedUnimodSequence> parsedByUnimod = new LinkedHashMap<>();
         List<PredictionJob> jobs = new ArrayList<>();
         for (NormalizedRequest normalizedRequest : normalizedRequests) {
@@ -189,14 +215,37 @@ public final class DefaultChronologerLibraryPredictor implements ChronologerLibr
                     PeptideSequenceConverter::parseNormalizedUnimod);
             long[] tokens = tokenByUnimod.get(unimod);
 
-            for (PrecursorCondition condition : normalizedRequest.conditions) {
-                jobs.add(new PredictionJob(
-                        unimod,
-                        parsed,
-                        tokens,
-                        condition.getPrecursorCharge(),
-                        condition.getPrecursorNce(),
-                        predHi * 60.0f));
+            if (normalizedRequest.automaticChargeSelection) {
+                float[] distribution = chargeDistributionByUnimod.get(unimod);
+                if (distribution == null) {
+                    throw new IllegalStateException("Missing Electrician distribution for peptide: " + unimod);
+                }
+
+                for (int charge = minPrecursorCharge; charge <= maxPrecursorCharge; charge++) {
+                    int chargeIndex = charge - 1;
+                    if (chargeIndex < 0 || chargeIndex >= distribution.length) {
+                        continue;
+                    }
+                    if (distribution[chargeIndex] >= normalizedRequest.minimumChargeProbability) {
+                        jobs.add(new PredictionJob(
+                                unimod,
+                                parsed,
+                                tokens,
+                                (byte) charge,
+                                normalizedRequest.precursorNce,
+                                predHi * 60.0f));
+                    }
+                }
+            } else {
+                for (PrecursorCondition condition : normalizedRequest.conditions) {
+                    jobs.add(new PredictionJob(
+                            unimod,
+                            parsed,
+                            tokens,
+                            condition.getPrecursorCharge(),
+                            condition.getPrecursorNce(),
+                            predHi * 60.0f));
+                }
             }
         }
 
@@ -247,6 +296,64 @@ public final class DefaultChronologerLibraryPredictor implements ChronologerLibr
         return results;
     }
 
+    private Map<String, float[]> inferChargeDistributions(
+            List<NormalizedRequest> normalizedRequests,
+            Map<String, long[]> tokenByUnimod) {
+        LinkedHashMap<String, long[]> tokensByAutoUnimod = new LinkedHashMap<>();
+        for (NormalizedRequest request : normalizedRequests) {
+            if (request.automaticChargeSelection) {
+                tokensByAutoUnimod.putIfAbsent(request.unimodPeptide, tokenByUnimod.get(request.unimodPeptide));
+            }
+        }
+        if (tokensByAutoUnimod.isEmpty()) {
+            return Map.of();
+        }
+
+        long[][] tokenBatch = new long[tokensByAutoUnimod.size()][];
+        List<String> unimodBatch = new ArrayList<>(tokensByAutoUnimod.size());
+        int index = 0;
+        for (Map.Entry<String, long[]> entry : tokensByAutoUnimod.entrySet()) {
+            unimodBatch.add(entry.getKey());
+            tokenBatch[index++] = entry.getValue();
+        }
+
+        float[][] distributions = electricianPredictor.predict(tokenBatch);
+        if (distributions.length != unimodBatch.size()) {
+            throw new IllegalStateException(
+                    "Unexpected Electrician batch size: " + distributions.length + " expected=" + unimodBatch.size());
+        }
+
+        LinkedHashMap<String, float[]> normalizedByUnimod = new LinkedHashMap<>();
+        for (int i = 0; i < unimodBatch.size(); i++) {
+            float[] distribution = distributions[i];
+            if (distribution.length != electricianOutputWidth) {
+                throw new IllegalStateException(
+                        "Unexpected Electrician output width: " + distribution.length + " expected=" + electricianOutputWidth);
+            }
+            normalizedByUnimod.put(unimodBatch.get(i), normalizeChargeDistribution(distribution));
+        }
+        return normalizedByUnimod;
+    }
+
+    private float[] normalizeChargeDistribution(float[] distribution) {
+        float[] normalized = new float[distribution.length];
+        double sum = 0.0;
+        for (int i = 0; i < distribution.length; i++) {
+            float value = distribution[i];
+            if (Float.isFinite(value) && value > 0.0f) {
+                normalized[i] = value;
+                sum += value;
+            }
+        }
+        if (sum <= 0.0) {
+            return normalized;
+        }
+        for (int i = 0; i < normalized.length; i++) {
+            normalized[i] = (float) (normalized[i] / sum);
+        }
+        return normalized;
+    }
+
     private void validateCondition(PrecursorCondition condition) {
         if (condition == null) {
             throw new IllegalArgumentException("Precursor condition must be non-null.");
@@ -257,7 +364,23 @@ public final class DefaultChronologerLibraryPredictor implements ChronologerLibr
                     "Precursor charge " + charge + " is outside supported range "
                             + minPrecursorCharge + "-" + maxPrecursorCharge);
         }
-        double nce = condition.getPrecursorNce();
+        validateNce(condition.getPrecursorNce());
+    }
+
+    private void validateAutomaticRequest(double nce, double minimumChargeProbability) {
+        validateNce(nce);
+        if (!Double.isFinite(minimumChargeProbability)) {
+            throw new IllegalArgumentException("Minimum charge probability must be a finite number.");
+        }
+        if (minimumChargeProbability < 0.0 || minimumChargeProbability > 1.0) {
+            throw new IllegalArgumentException(
+                    "Minimum charge probability "
+                            + minimumChargeProbability
+                            + " is outside the supported range 0.0-1.0.");
+        }
+    }
+
+    private void validateNce(double nce) {
         if (!Double.isFinite(nce)) {
             throw new IllegalArgumentException("NCE must be a finite number.");
         }
@@ -274,6 +397,7 @@ public final class DefaultChronologerLibraryPredictor implements ChronologerLibr
             return;
         }
         closed = true;
+        electricianPredictor.close();
         cartographerPredictor.close();
         chronologer.close();
     }
@@ -297,13 +421,52 @@ public final class DefaultChronologerLibraryPredictor implements ChronologerLibr
         }
     }
 
+    private static ElectricianMetadata loadElectricianMetadata(String resource) {
+        ClassLoader loader = Thread.currentThread().getContextClassLoader();
+        try (InputStream input = loader.getResourceAsStream(resource)) {
+            if (input == null) {
+                throw new IllegalArgumentException("Missing electrician metadata resource: " + resource);
+            }
+            JsonNode root = OBJECT_MAPPER.readTree(input);
+            JsonNode outputShape = root.path("output_shape");
+            int outputWidth = outputShape.size() > 1
+                    ? outputShape.get(1).asInt(ELECTRICIAN_CHARGE_STATE_COUNT)
+                    : ELECTRICIAN_CHARGE_STATE_COUNT;
+            return new ElectricianMetadata(outputWidth);
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to parse electrician metadata resource: " + resource, e);
+        }
+    }
+
     private static final class NormalizedRequest {
         private final String unimodPeptide;
         private final List<PrecursorCondition> conditions;
+        private final boolean automaticChargeSelection;
+        private final double precursorNce;
+        private final double minimumChargeProbability;
 
-        private NormalizedRequest(String unimodPeptide, List<PrecursorCondition> conditions) {
+        private NormalizedRequest(
+                String unimodPeptide,
+                List<PrecursorCondition> conditions,
+                boolean automaticChargeSelection,
+                double precursorNce,
+                double minimumChargeProbability) {
             this.unimodPeptide = unimodPeptide;
             this.conditions = conditions;
+            this.automaticChargeSelection = automaticChargeSelection;
+            this.precursorNce = precursorNce;
+            this.minimumChargeProbability = minimumChargeProbability;
+        }
+
+        private static NormalizedRequest explicit(String unimodPeptide, List<PrecursorCondition> conditions) {
+            return new NormalizedRequest(unimodPeptide, conditions, false, Double.NaN, Double.NaN);
+        }
+
+        private static NormalizedRequest automatic(
+                String unimodPeptide,
+                double precursorNce,
+                double minimumChargeProbability) {
+            return new NormalizedRequest(unimodPeptide, List.of(), true, precursorNce, minimumChargeProbability);
         }
     }
 
@@ -339,6 +502,14 @@ public final class DefaultChronologerLibraryPredictor implements ChronologerLibr
         private CartographerMetadata(int minPrecursorCharge, int maxPrecursorCharge, int outputWidth) {
             this.minPrecursorCharge = minPrecursorCharge;
             this.maxPrecursorCharge = maxPrecursorCharge;
+            this.outputWidth = outputWidth;
+        }
+    }
+
+    private static final class ElectricianMetadata {
+        private final int outputWidth;
+
+        private ElectricianMetadata(int outputWidth) {
             this.outputWidth = outputWidth;
         }
     }
