@@ -235,6 +235,32 @@ class CartographerPrtcParityTest {
 		assertTrue(overlap >= 4, "Top-6 decoded ion overlap is too small: " + overlap + " (expected >= 4)");
 	}
 
+	@Test
+	void electricianPrtcPeptidesShouldStronglyFavorChargeTwo() {
+		float[][] distributions = predictChargeDistributions(PRTC_PEPTIDES);
+		assertEquals(PRTC_PEPTIDES.length, distributions.length);
+
+		for (int i = 0; i < PRTC_PEPTIDES.length; i++) {
+			String peptide = PRTC_PEPTIDES[i];
+			float[] normalized = normalizeDistribution(distributions[i]);
+			assertEquals(6, normalized.length, "Electrician output must have 6 charge-state probabilities.");
+
+			float plusTwo = normalized[PRTC_CHARGE - 1];
+			float maxProbability = -1.0f;
+			int maxCharge = -1;
+			for (int charge = 1; charge <= normalized.length; charge++) {
+				float probability = normalized[charge - 1];
+				if (probability > maxProbability) {
+					maxProbability = probability;
+					maxCharge = charge;
+				}
+			}
+
+			assertEquals(PRTC_CHARGE, maxCharge, peptide + ": max Electrician probability is not at charge +2.");
+			assertTrue(plusTwo >= 0.90f, peptide + ": expected P(+2) >= 0.9, found " + plusTwo);
+		}
+	}
+
 	// ── Helpers ──────────────────────────────────────────────────────────
 
 	private static float[][] predictVectors(String[] peptides) {
@@ -257,6 +283,42 @@ class CartographerPrtcParityTest {
 			}
 			return predictor.predict(tokenBatch, chargeBatch, nceBatch);
 		}
+	}
+
+	private static float[][] predictChargeDistributions(String[] peptides) {
+		ChronologerPreprocessor preprocessor = new ChronologerPreprocessor(
+				PreprocessingMetadataLoader.loadFromClasspath(
+						ChronologerLibraryOptions.DEFAULT_ELECTRICIAN_PREPROCESSING_RESOURCE));
+		try (ElectricianBatchPredictor predictor = new ElectricianBatchPredictor(
+				ChronologerLibraryOptions.DEFAULT_ELECTRICIAN_MODEL_RESOURCE)) {
+			long[][] tokenBatch = new long[peptides.length][];
+			for (int i = 0; i < peptides.length; i++) {
+				PreprocessingOutcome outcome = preprocessor.preprocess(peptides[i]);
+				assertTrue(outcome.isAccepted(),
+						"Failed to tokenize peptide " + peptides[i] + ": " + outcome.getRejectionReason());
+				tokenBatch[i] = outcome.getTokenArray();
+			}
+			return predictor.predict(tokenBatch);
+		}
+	}
+
+	private static float[] normalizeDistribution(float[] rawDistribution) {
+		float[] normalized = new float[rawDistribution.length];
+		double sum = 0.0;
+		for (int i = 0; i < rawDistribution.length; i++) {
+			float value = rawDistribution[i];
+			if (Float.isFinite(value) && value > 0.0f) {
+				normalized[i] = value;
+				sum += value;
+			}
+		}
+		if (sum <= 0.0) {
+			return normalized;
+		}
+		for (int i = 0; i < normalized.length; i++) {
+			normalized[i] = (float) (normalized[i] / sum);
+		}
+		return normalized;
 	}
 
 	private static void assertIonArraysLookValid(
