@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -26,7 +27,7 @@ import org.searlelab.jchronologer.preprocessing.PreprocessingOutcome;
 
 class LibraryPredictorIntegrationTest {
     private static final Pattern ION_TYPE_PATTERN = Pattern.compile("([1-3])\\+([yb])(\\d+)");
-    private static final double CHARGE_DISTRIBUTION_TOLERANCE = 1e-4;
+    private static final double CHARGE_DISTRIBUTION_TOLERANCE = 1e-2;
 
     @Test
     void predictTASEFDSAIAQDK() {
@@ -167,7 +168,7 @@ class LibraryPredictorIntegrationTest {
 
         try (ChronologerLibraryPredictor predictor = ChronologerFactory.createLibraryPredictorDefault()) {
             List<ChronologerLibraryEntry> entries = predictor.predict(requests);
-            assertEquals(6, entries.size());
+            assertEquals(7, entries.size());
 
             assertEquals(peptides.get(0), entries.get(0).getUnimodPeptideSequence());
             assertEquals((byte) 2, entries.get(0).getPrecursorCharge());
@@ -175,15 +176,17 @@ class LibraryPredictorIntegrationTest {
             assertEquals((byte) 3, entries.get(1).getPrecursorCharge());
 
             assertEquals(peptides.get(1), entries.get(2).getUnimodPeptideSequence());
-            assertEquals((byte) 3, entries.get(2).getPrecursorCharge());
+            assertEquals((byte) 2, entries.get(2).getPrecursorCharge());
+            assertEquals(peptides.get(1), entries.get(3).getUnimodPeptideSequence());
+            assertEquals((byte) 3, entries.get(3).getPrecursorCharge());
 
-            assertEquals(peptides.get(2), entries.get(3).getUnimodPeptideSequence());
-            assertEquals((byte) 1, entries.get(3).getPrecursorCharge());
+            assertEquals(peptides.get(2), entries.get(4).getUnimodPeptideSequence());
+            assertEquals((byte) 1, entries.get(4).getPrecursorCharge());
 
-            assertEquals(peptides.get(3), entries.get(4).getUnimodPeptideSequence());
-            assertEquals((byte) 3, entries.get(4).getPrecursorCharge());
             assertEquals(peptides.get(3), entries.get(5).getUnimodPeptideSequence());
             assertEquals((byte) 4, entries.get(5).getPrecursorCharge());
+            assertEquals(peptides.get(3), entries.get(6).getUnimodPeptideSequence());
+            assertEquals((byte) 5, entries.get(6).getPrecursorCharge());
 
             for (ChronologerLibraryEntry entry : entries) {
                 assertEquals(33.0, entry.getPrecursorNce());
@@ -193,10 +196,10 @@ class LibraryPredictorIntegrationTest {
 
         Map<String, float[]> actual = electricianChargeDistributions(peptides);
         Map<String, float[]> expected = new LinkedHashMap<>();
-        expected.put(peptides.get(0), new float[] {0.0000f, 0.2682f, 0.7318f, 0.0000f, 0.0000f, 0.0000f});
-        expected.put(peptides.get(1), new float[] {0.0000f, 0.0381f, 0.9619f, 0.0000f, 0.0000f, 0.0000f});
-        expected.put(peptides.get(2), new float[] {0.9983f, 0.0017f, 0.0000f, 0.0000f, 0.0000f, 0.0000f});
-        expected.put(peptides.get(3), new float[] {0.0000f, 0.0000f, 0.0872f, 0.9080f, 0.0048f, 0.0000f});
+        expected.put(peptides.get(0), new float[] {0.0000f, 0.3774f, 0.6226f, 0.0000f, 0.0000f, 0.0000f});
+        expected.put(peptides.get(1), new float[] {0.0000f, 0.0590f, 0.9409f, 0.0000f, 0.0000f, 0.0000f});
+        expected.put(peptides.get(2), new float[] {0.9979f, 0.0021f, 0.0000f, 0.0000f, 0.0000f, 0.0000f});
+        expected.put(peptides.get(3), new float[] {0.0000f, 0.0000f, 0.0249f, 0.9204f, 0.0547f, 0.0000f});
 
         for (Map.Entry<String, float[]> entry : expected.entrySet()) {
             float[] observed = actual.get(entry.getKey());

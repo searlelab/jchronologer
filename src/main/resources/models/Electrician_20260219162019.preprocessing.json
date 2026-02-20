@@ -1,6 +1,6 @@
 {
-  "model_file": "/Users/searle.brian/Documents/projects/cartographer/models/Cartographer_20260216213651.pt",
-  "model_family": "cartographer",
+  "model_file": "/Users/searle.brian/Documents/projects/cartographer/models/Electrician_20260219162019.pt",
+  "model_family": "electrician",
   "residues": [
     "A",
     "C",
@@ -109,40 +109,24 @@
   },
   "padding_index": 0,
   "max_peptide_len": 31,
-  "min_precursor_charge": 1,
-  "max_precursor_charge": 6,
   "input_names": [
-    "tokens",
-    "precursor_charge_onehot",
-    "nce"
+    "tokens"
   ],
   "input_shapes": [
     [
       "batch",
       33
-    ],
-    [
-      "batch",
-      6
-    ],
-    [
-      "batch",
-      1
     ]
   ],
   "input_dtypes": [
-    "int64",
-    "float32",
-    "float32"
+    "int64"
   ],
-  "output_name": "intensities",
+  "output_name": "charge_state_dist",
   "output_shape": [
     "batch",
-    174
+    6
   ],
   "output_dtype": "float32",
-  "example_precursor_charge": 2,
-  "example_nce": 0.3,
   "mod_regex_rules": [
     {
       "pattern": "M\\[\\+15\\.99.{,6}\\]",

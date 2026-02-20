@@ -69,26 +69,33 @@ class CartographerPrtcParityTest {
 			String peptide = PRTC_PEPTIDES[i];
 			float[] predicted = predictions[i];
 			float[] reference = referenceByPeptide.get(peptide);
+			ParsedUnimodSequence parsed = PeptideSequenceConverter.parseNormalizedUnimod("[]-" + peptide + "-[]");
+			List<String> validIonOrder = validIonTypes(parsed.getResidues().length(), PRTC_CHARGE);
 
 			assertTrue(reference != null, "Missing reference for " + peptide);
 			assertEquals(VECTOR_LENGTH, predicted.length, "Wrong output width for " + peptide);
 
-			double cosine = cosineSimilarity(predicted, reference);
-			int sigPred = countAbove(predicted, 0.01f);
-			int sigRef = countAbove(reference, 0.01f);
+			Map<String, Float> referenceByIon = decodeByIon(parsed, reference, 0.0f);
+			Map<String, Float> predictedByIon = decodeByIon(parsed, predicted, 0.0f);
+			float[] referenceNormalized = normalizeDecodedIntensities(referenceByIon, validIonOrder);
+			float[] predictedNormalized = normalizeDecodedIntensities(predictedByIon, validIonOrder);
+
+			double cosine = cosineSimilarity(predictedNormalized, referenceNormalized);
+			int sigPred = countAbove(predictedNormalized, 0.01f);
+			int sigRef = countAbove(referenceNormalized, 0.01f);
 			assertTrue(cosine > 0.80,
 					peptide + ": cosine similarity " + String.format("%.4f", cosine)
-							+ " is below 0.80 threshold.");
-			assertTrue(sigPred >= 5, peptide + ": only " + sigPred + " significant intensities in prediction.");
-			assertTrue(sigRef >= 5, peptide + ": reference unexpectedly has only " + sigRef + " significant intensities.");
+							+ " is below 0.80 threshold (decoded + masked + renormalized).");
+			assertTrue(sigPred >= 5, peptide + ": only " + sigPred + " significant decoded intensities in prediction.");
+			assertTrue(sigRef >= 5, peptide + ": reference unexpectedly has only " + sigRef + " significant decoded intensities.");
 
-			int[] topReference = topIndices(reference, 12);
-			int[] topPredicted = topIndices(predicted, 12);
+			int[] topReference = topIndices(referenceNormalized, 12);
+			int[] topPredicted = topIndices(predictedNormalized, 12);
 			int topOverlap = overlapCount(topReference, topPredicted);
 			assertTrue(topOverlap >= 7,
 					peptide + ": top-12 overlap too small (" + topOverlap + "), expected >= 7.");
 
-			int[] referenceTop3 = topIndices(reference, 3);
+			int[] referenceTop3 = topIndices(referenceNormalized, 3);
 			assertTrue(contains(referenceTop3, topPredicted[0]),
 					peptide + ": strongest predicted peak is not in reference top-3.");
 		}
@@ -407,6 +414,42 @@ class CartographerPrtcParityTest {
 				.limit(count)
 				.map(Map.Entry::getKey)
 				.toList();
+	}
+
+	private static List<String> validIonTypes(int peptideLength, byte precursorCharge) {
+		List<String> ions = new ArrayList<>();
+		for (int ionNumber = 1; ionNumber <= 29; ionNumber++) {
+			for (int fragmentCharge = 1; fragmentCharge <= 3; fragmentCharge++) {
+				if (PeptideMassCalculator.isFragmentPossible(
+						peptideLength,
+						precursorCharge,
+						ionNumber,
+						fragmentCharge)) {
+					ions.add(fragmentCharge + "+y" + ionNumber);
+					ions.add(fragmentCharge + "+b" + ionNumber);
+				}
+			}
+		}
+		return ions;
+	}
+
+	private static float[] normalizeDecodedIntensities(Map<String, Float> byIon, List<String> ionOrder) {
+		float[] values = new float[ionOrder.size()];
+		double sum = 0.0;
+		for (int i = 0; i < ionOrder.size(); i++) {
+			float intensity = byIon.getOrDefault(ionOrder.get(i), 0.0f);
+			if (Float.isFinite(intensity) && intensity > 0.0f) {
+				values[i] = intensity;
+				sum += intensity;
+			}
+		}
+		if (sum <= 0.0) {
+			return values;
+		}
+		for (int i = 0; i < values.length; i++) {
+			values[i] = (float) (values[i] / sum);
+		}
+		return values;
 	}
 
 	private static float sortableIntensity(float value) {

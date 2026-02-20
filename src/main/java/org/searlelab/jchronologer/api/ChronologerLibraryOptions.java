@@ -6,13 +6,13 @@ package org.searlelab.jchronologer.api;
 public final class ChronologerLibraryOptions {
 
     public static final String DEFAULT_CARTOGRAPHER_MODEL_RESOURCE =
-            "models/Cartographer_20260216213651.torchscript.pt";
+            "models/Cartographer_20260217162213.torchscript.pt";
     public static final String DEFAULT_CARTOGRAPHER_PREPROCESSING_RESOURCE =
-            "models/Cartographer_20260216213651.preprocessing.json";
+            "models/Cartographer_20260217162213.preprocessing.json";
     public static final String DEFAULT_ELECTRICIAN_MODEL_RESOURCE =
-            "models/Electrician_20260218214005.torchscript.pt";
+            "models/Electrician_20260219162019.torchscript.pt";
     public static final String DEFAULT_ELECTRICIAN_PREPROCESSING_RESOURCE =
-            "models/Electrician_20260218214005.preprocessing.json";
+            "models/Electrician_20260219162019.preprocessing.json";
     public static final double DEFAULT_MASS_MATCH_EPSILON = 1e-5;
     public static final float DEFAULT_MINIMUM_REPORTED_INTENSITY = 0.01f;
 
