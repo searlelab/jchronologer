@@ -72,6 +72,48 @@ class ParallelInferenceParityTest {
         }
     }
 
+    @Test
+    void adaptiveSingleBatchParallelInferenceMatchesSingleThreadOutput() {
+        List<String> peptides = buildLargeInputPeptides();
+
+        ChronologerOptions serialOptions = ChronologerOptions.builder()
+                .batchSize(2048)
+                .inferenceThreads(1)
+                .build();
+
+        ChronologerOptions parallelOptions = ChronologerOptions.builder()
+                .batchSize(2048)
+                .inferenceThreads(4)
+                .build();
+
+        PredictionResult serialResult;
+        PredictionResult parallelResult;
+        try (Chronologer serial = ChronologerFactory.create(serialOptions);
+                Chronologer parallel = ChronologerFactory.create(parallelOptions)) {
+            serialResult = serial.predict(peptides);
+            parallelResult = parallel.predict(peptides);
+        }
+
+        assertEquals(serialResult.getAcceptedCount(), parallelResult.getAcceptedCount());
+        assertEquals(serialResult.getRejectedCount(), parallelResult.getRejectedCount());
+
+        Map<Integer, AcceptedPrediction> serialAccepted = serialResult.getAcceptedByRowIndex();
+        Map<Integer, AcceptedPrediction> parallelAccepted = parallelResult.getAcceptedByRowIndex();
+        assertEquals(serialAccepted.size(), parallelAccepted.size());
+
+        for (Map.Entry<Integer, AcceptedPrediction> entry : serialAccepted.entrySet()) {
+            int rowIndex = entry.getKey();
+            AcceptedPrediction serialPrediction = entry.getValue();
+            AcceptedPrediction parallelPrediction = parallelAccepted.get(rowIndex);
+            assertNotNull(parallelPrediction, "Missing accepted prediction for row " + rowIndex);
+            assertEquals(serialPrediction.getPeptideModSeq(), parallelPrediction.getPeptideModSeq());
+            assertEquals(serialPrediction.getPatchedPeptideModSeq(), parallelPrediction.getPatchedPeptideModSeq());
+            assertEquals(serialPrediction.getCodedPeptideSeq(), parallelPrediction.getCodedPeptideSeq());
+            assertArrayEquals(serialPrediction.getTokenArray(), parallelPrediction.getTokenArray());
+            assertEquals(serialPrediction.getPredHi(), parallelPrediction.getPredHi(), 1e-5f);
+        }
+    }
+
     private static List<String> buildInputPeptides() {
         List<String> peptides = new ArrayList<>();
         for (int i = 0; i < 24; i++) {
@@ -81,6 +123,18 @@ class ParallelInferenceParityTest {
             peptides.add("[42.010565]ACDEFGHIK");
         }
         assertTrue(peptides.size() > 8);
+        return peptides;
+    }
+
+    private static List<String> buildLargeInputPeptides() {
+        List<String> peptides = new ArrayList<>();
+        for (int i = 0; i < 850; i++) {
+            peptides.add("VATVSLPR");
+        }
+        for (int i = 0; i < 100; i++) {
+            peptides.add("[42.010565]ACDEFGHIK");
+        }
+        assertTrue(peptides.size() > 800);
         return peptides;
     }
 }

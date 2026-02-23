@@ -33,6 +33,7 @@ public final class DefaultChronologer implements Chronologer {
     private static final String DJL_PLATFORM_LOG_LEVEL_PROPERTY = "org.slf4j.simpleLogger.log.ai.djl.util.Platform";
     private static final String DJL_PT_ENGINE_LOG_LEVEL_PROPERTY =
             "org.slf4j.simpleLogger.log.ai.djl.pytorch.engine.PtEngine";
+    private static final int MIN_PARALLEL_SUB_BATCH_SIZE = 256;
 
     private final ChronologerOptions options;
     private final ChronologerPreprocessor preprocessor;
@@ -184,6 +185,20 @@ public final class DefaultChronologer implements Chronologer {
         }
 
         List<BatchRequest> batchRequests = partitionIntoBatches(acceptedDrafts, options.getBatchSize());
+        int originalBatchCount = batchRequests.size();
+        List<BatchRequest> adaptiveBatches = originalBatchCount == 1
+                ? repartitionSingleBatchForParallel(acceptedDrafts, options.getInferenceThreads())
+                : List.of();
+        if (!adaptiveBatches.isEmpty()) {
+            batchRequests = adaptiveBatches;
+            LOGGER.info(
+                    "Chronologer adaptive repartition enabled: accepted={}, originalBatches={}, adaptedBatches={}, minSubBatchSize={}",
+                    acceptedDrafts.size(),
+                    originalBatchCount,
+                    batchRequests.size(),
+                    MIN_PARALLEL_SUB_BATCH_SIZE);
+        }
+
         if (executor == null || batchRequests.size() == 1) {
             for (BatchRequest request : batchRequests) {
                 float[] batchPredictions = predictor.predict(request.tokenBatch);
@@ -223,6 +238,27 @@ public final class DefaultChronologer implements Chronologer {
             Throwable cause = e.getCause() == null ? e : e.getCause();
             throw new IllegalStateException("Failed to run Chronologer inference.", cause);
         }
+    }
+
+    private static List<BatchRequest> repartitionSingleBatchForParallel(
+            List<AcceptedDraft> acceptedDrafts,
+            int maxThreads) {
+        if (maxThreads <= 1) {
+            return List.of();
+        }
+        int totalAccepted = acceptedDrafts.size();
+        if (totalAccepted < MIN_PARALLEL_SUB_BATCH_SIZE * 2) {
+            return List.of();
+        }
+
+        int maxChunksBySize = totalAccepted / MIN_PARALLEL_SUB_BATCH_SIZE;
+        int chunkCount = Math.min(maxThreads, maxChunksBySize);
+        if (chunkCount < 2) {
+            return List.of();
+        }
+
+        int chunkSize = (int) Math.ceil(totalAccepted / (double) chunkCount);
+        return partitionIntoBatches(acceptedDrafts, chunkSize);
     }
 
     private static List<BatchRequest> partitionIntoBatches(List<AcceptedDraft> acceptedDrafts, int batchSize) {

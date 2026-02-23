@@ -9,6 +9,12 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.searlelab.jchronologer.api.AcceptedPrediction;
 import org.searlelab.jchronologer.api.Chronologer;
 import org.searlelab.jchronologer.api.ChronologerLibraryEntry;
@@ -29,6 +35,8 @@ import org.searlelab.jchronologer.preprocessing.PeptideSequenceConverter;
 import org.searlelab.jchronologer.preprocessing.PeptideSequenceConverter.ParsedUnimodSequence;
 import org.searlelab.jchronologer.preprocessing.PreprocessingMetadataLoader;
 import org.searlelab.jchronologer.preprocessing.PreprocessingOutcome;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Default tandem predictor combining Chronologer RT and Cartographer MS2 inference.
@@ -36,6 +44,7 @@ import org.searlelab.jchronologer.preprocessing.PreprocessingOutcome;
 public final class DefaultChronologerLibraryPredictor implements ChronologerLibraryPredictor {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final Logger LOGGER = LoggerFactory.getLogger(DefaultChronologerLibraryPredictor.class);
 
     /** Minimum accepted NCE value (standard units, e.g. 20 for 20%). */
     private static final double MIN_NCE = 10.0;
@@ -55,6 +64,7 @@ public final class DefaultChronologerLibraryPredictor implements ChronologerLibr
     private final int maxPrecursorCharge;
     private final int cartographerOutputWidth;
     private final int electricianOutputWidth;
+    private final ExecutorService cartographerExecutor;
     private volatile boolean closed;
 
     public DefaultChronologerLibraryPredictor(ChronologerLibraryOptions options) {
@@ -87,6 +97,9 @@ public final class DefaultChronologerLibraryPredictor implements ChronologerLibr
                             + " expected="
                             + ELECTRICIAN_CHARGE_STATE_COUNT);
         }
+        this.cartographerExecutor = options.getInferenceThreads() > 1
+                ? newCartographerExecutor(options.getInferenceThreads())
+                : null;
     }
 
     @Override
@@ -103,6 +116,8 @@ public final class DefaultChronologerLibraryPredictor implements ChronologerLibr
             return List.of();
         }
 
+        long totalStartNanos = System.nanoTime();
+        long normalizeStartNanos = System.nanoTime();
         List<NormalizedRequest> normalizedRequests = new ArrayList<>(requests.size());
         LinkedHashMap<String, String> massByUnimod = new LinkedHashMap<>();
 
@@ -138,7 +153,9 @@ public final class DefaultChronologerLibraryPredictor implements ChronologerLibr
 
             massByUnimod.putIfAbsent(normalizedUnimod, massEncoded);
         }
+        long normalizeNanos = System.nanoTime() - normalizeStartNanos;
 
+        long tokenizationStartNanos = System.nanoTime();
         LinkedHashMap<String, long[]> tokenByUnimod = new LinkedHashMap<>();
         List<String> massEncodedUnique = new ArrayList<>(massByUnimod.size());
         for (Map.Entry<String, String> entry : massByUnimod.entrySet()) {
@@ -182,8 +199,11 @@ public final class DefaultChronologerLibraryPredictor implements ChronologerLibr
             tokenByUnimod.put(unimod, outcome.getTokenArray());
             massEncodedUnique.add(massEncoded);
         }
+        long tokenizationNanos = System.nanoTime() - tokenizationStartNanos;
 
+        long rtStartNanos = System.nanoTime();
         PredictionResult rtResult = chronologer.predict(massEncodedUnique);
+        long rtNanos = System.nanoTime() - rtStartNanos;
         if (!rtResult.getRejected().isEmpty()) {
             RejectedPrediction first = rtResult.getRejected().get(0);
             throw new IllegalArgumentException(
@@ -198,8 +218,11 @@ public final class DefaultChronologerLibraryPredictor implements ChronologerLibr
             predHiByMass.put(accepted.getPeptideModSeq(), accepted.getPredHi());
         }
 
+        long chargeStartNanos = System.nanoTime();
         Map<String, float[]> chargeDistributionByUnimod = inferChargeDistributions(normalizedRequests, tokenByUnimod);
+        long chargeNanos = System.nanoTime() - chargeStartNanos;
 
+        long jobExpansionStartNanos = System.nanoTime();
         LinkedHashMap<String, ParsedUnimodSequence> parsedByUnimod = new LinkedHashMap<>();
         List<PredictionJob> jobs = new ArrayList<>();
         for (NormalizedRequest normalizedRequest : normalizedRequests) {
@@ -248,27 +271,60 @@ public final class DefaultChronologerLibraryPredictor implements ChronologerLibr
                 }
             }
         }
+        long jobExpansionNanos = System.nanoTime() - jobExpansionStartNanos;
 
-        List<ChronologerLibraryEntry> results = new ArrayList<>(jobs.size());
-        for (int start = 0; start < jobs.size(); start += options.getCartographerBatchSize()) {
-            int end = Math.min(start + options.getCartographerBatchSize(), jobs.size());
-            List<PredictionJob> batch = jobs.subList(start, end);
+        int cartographerBatchCount = jobs.isEmpty()
+                ? 0
+                : (int) Math.ceil(jobs.size() / (double) options.getCartographerBatchSize());
+        BatchPredictionResult[] orderedPredictionBatches = new BatchPredictionResult[cartographerBatchCount];
+        List<Future<BatchPredictionResult>> futures = new ArrayList<>(cartographerBatchCount);
 
-            long[][] tokenBatch = new long[batch.size()][];
-            float[][] chargeBatch = new float[batch.size()][maxPrecursorCharge - minPrecursorCharge + 1];
-            float[][] nceBatch = new float[batch.size()][1];
-
-            for (int i = 0; i < batch.size(); i++) {
-                PredictionJob job = batch.get(i);
-                tokenBatch[i] = job.tokenArray;
-                chargeBatch[i][job.charge - minPrecursorCharge] = 1.0f;
-                nceBatch[i][0] = (float) (job.nce / NCE_NORMALIZATION_DIVISOR);
+        if (!jobs.isEmpty()) {
+            int batchIndex = 0;
+            for (int start = 0; start < jobs.size(); start += options.getCartographerBatchSize()) {
+                int end = Math.min(start + options.getCartographerBatchSize(), jobs.size());
+                final int startFinal = start;
+                final int endFinal = end;
+                final int batchIndexFinal = batchIndex;
+                if (cartographerExecutor == null || cartographerBatchCount == 1) {
+                    orderedPredictionBatches[batchIndexFinal] = predictCartographerBatch(jobs, startFinal, endFinal, batchIndexFinal);
+                } else {
+                    futures.add(cartographerExecutor.submit(
+                            () -> predictCartographerBatch(jobs, startFinal, endFinal, batchIndexFinal)));
+                }
+                batchIndex++;
             }
+        }
 
-            float[][] predictions = cartographerPredictor.predict(tokenBatch, chargeBatch, nceBatch);
-            for (int i = 0; i < batch.size(); i++) {
-                PredictionJob job = batch.get(i);
-                float[] vector = predictions[i];
+        if (!futures.isEmpty()) {
+            try {
+                for (Future<BatchPredictionResult> future : futures) {
+                    BatchPredictionResult batchResult = future.get();
+                    orderedPredictionBatches[batchResult.batchIndex] = batchResult;
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                futures.forEach(future -> future.cancel(true));
+                throw new IllegalStateException("Cartographer inference was interrupted.", e);
+            } catch (ExecutionException e) {
+                futures.forEach(future -> future.cancel(true));
+                Throwable cause = e.getCause() == null ? e : e.getCause();
+                throw new IllegalStateException("Failed to run Cartographer inference.", cause);
+            }
+        }
+
+        long cartographerInferenceNanos = 0L;
+        List<ChronologerLibraryEntry> results = new ArrayList<>(jobs.size());
+        long decodeStartNanos = System.nanoTime();
+        for (int batchIndex = 0; batchIndex < orderedPredictionBatches.length; batchIndex++) {
+            BatchPredictionResult batchResult = orderedPredictionBatches[batchIndex];
+            if (batchResult == null) {
+                throw new IllegalStateException("Missing Cartographer batch result for batch index " + batchIndex);
+            }
+            cartographerInferenceNanos += batchResult.inferenceNanos;
+            for (int i = 0; i < batchResult.batchSize; i++) {
+                PredictionJob job = jobs.get(batchResult.startJobIndex + i);
+                float[] vector = batchResult.predictions[i];
                 if (vector.length != cartographerOutputWidth) {
                     throw new IllegalStateException(
                             "Unexpected Cartographer output width: " + vector.length + " expected=" + cartographerOutputWidth);
@@ -292,8 +348,76 @@ public final class DefaultChronologerLibraryPredictor implements ChronologerLibr
                         decoded.getIonTypeArray()));
             }
         }
+        long decodeNanos = System.nanoTime() - decodeStartNanos;
+
+        LOGGER.info(
+                "Library predict completed: requests={}, uniquePeptides={}, jobs={}, cartographerBatches={}, normalizeMs={}, tokenizationMs={}, rtMs={}, chargeMs={}, jobExpandMs={}, cartographerInferenceMs={}, decodeMs={}, totalMs={}",
+                requests.size(),
+                massByUnimod.size(),
+                jobs.size(),
+                cartographerBatchCount,
+                elapsedMillis(normalizeNanos),
+                elapsedMillis(tokenizationNanos),
+                elapsedMillis(rtNanos),
+                elapsedMillis(chargeNanos),
+                elapsedMillis(jobExpansionNanos),
+                elapsedMillis(cartographerInferenceNanos),
+                elapsedMillis(decodeNanos),
+                elapsedMillis(System.nanoTime() - totalStartNanos));
 
         return results;
+    }
+
+    private BatchPredictionResult predictCartographerBatch(
+            List<PredictionJob> jobs,
+            int start,
+            int end,
+            int batchIndex) {
+        List<PredictionJob> batch = jobs.subList(start, end);
+        long[][] tokenBatch = new long[batch.size()][];
+        float[][] chargeBatch = new float[batch.size()][maxPrecursorCharge - minPrecursorCharge + 1];
+        float[][] nceBatch = new float[batch.size()][1];
+
+        for (int i = 0; i < batch.size(); i++) {
+            PredictionJob job = batch.get(i);
+            tokenBatch[i] = job.tokenArray;
+            chargeBatch[i][job.charge - minPrecursorCharge] = 1.0f;
+            nceBatch[i][0] = (float) (job.nce / NCE_NORMALIZATION_DIVISOR);
+        }
+
+        long inferenceStartNanos = System.nanoTime();
+        float[][] predictions = cartographerPredictor.predict(tokenBatch, chargeBatch, nceBatch);
+        long inferenceNanos = System.nanoTime() - inferenceStartNanos;
+        return new BatchPredictionResult(batchIndex, start, batch.size(), predictions, inferenceNanos);
+    }
+
+    private static ExecutorService newCartographerExecutor(int threads) {
+        AtomicInteger threadCounter = new AtomicInteger(1);
+        return Executors.newFixedThreadPool(threads, runnable -> {
+            Thread thread = new Thread(runnable);
+            thread.setName("cartographer-inference-" + threadCounter.getAndIncrement());
+            thread.setDaemon(true);
+            return thread;
+        });
+    }
+
+    private static void shutdownCartographerExecutor(ExecutorService executor) {
+        if (executor == null) {
+            return;
+        }
+        executor.shutdown();
+        try {
+            if (!executor.awaitTermination(30, TimeUnit.SECONDS)) {
+                executor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            executor.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    private static long elapsedMillis(long nanos) {
+        return nanos / 1_000_000L;
     }
 
     private Map<String, float[]> inferChargeDistributions(
@@ -397,6 +521,7 @@ public final class DefaultChronologerLibraryPredictor implements ChronologerLibr
             return;
         }
         closed = true;
+        shutdownCartographerExecutor(cartographerExecutor);
         electricianPredictor.close();
         cartographerPredictor.close();
         chronologer.close();
@@ -491,6 +616,27 @@ public final class DefaultChronologerLibraryPredictor implements ChronologerLibr
             this.charge = charge;
             this.nce = nce;
             this.retentionTimeSeconds = retentionTimeSeconds;
+        }
+    }
+
+    private static final class BatchPredictionResult {
+        private final int batchIndex;
+        private final int startJobIndex;
+        private final int batchSize;
+        private final float[][] predictions;
+        private final long inferenceNanos;
+
+        private BatchPredictionResult(
+                int batchIndex,
+                int startJobIndex,
+                int batchSize,
+                float[][] predictions,
+                long inferenceNanos) {
+            this.batchIndex = batchIndex;
+            this.startJobIndex = startJobIndex;
+            this.batchSize = batchSize;
+            this.predictions = predictions;
+            this.inferenceNanos = inferenceNanos;
         }
     }
 
