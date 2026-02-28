@@ -1,5 +1,5 @@
 {
-  "model_file": "/Users/searle.brian/Documents/projects/cartographer/models/Electrician_20260219162019.pt",
+  "model_file": "/Users/searle.brian/Documents/projects/cartographer/models/Electrician_20260225110528.pt",
   "model_family": "electrician",
   "residues": [
     "A",
@@ -235,5 +235,17 @@
     "+229.1": "*",
     "-17.02": "(",
     "-18.01": ")"
+  },
+  "architecture_overrides": {
+    "embed_dim": 24,
+    "n_blocks": 3,
+    "kernel": 5,
+    "block_variant": "full",
+    "bottleneck_ratio": 0.5,
+    "dilation_schedule": [
+      1,
+      4,
+      8
+    ]
   }
 }

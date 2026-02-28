@@ -10,9 +10,9 @@ public final class ChronologerLibraryOptions {
     public static final String DEFAULT_CARTOGRAPHER_PREPROCESSING_RESOURCE =
             "models/Cartographer_20260217162213.preprocessing.json";
     public static final String DEFAULT_ELECTRICIAN_MODEL_RESOURCE =
-            "models/Electrician_20260219162019.torchscript.pt";
+            "models/Electrician_20260225110528.torchscript.pt";
     public static final String DEFAULT_ELECTRICIAN_PREPROCESSING_RESOURCE =
-            "models/Electrician_20260219162019.preprocessing.json";
+            "models/Electrician_20260225110528.preprocessing.json";
     public static final double DEFAULT_MASS_MATCH_EPSILON = 1e-5;
     public static final float DEFAULT_MINIMUM_REPORTED_INTENSITY = 0.01f;
 
