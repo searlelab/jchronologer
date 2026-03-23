@@ -144,6 +144,7 @@ class DefaultChronologerLibraryPredictorParallelTest {
         assertEquals(expected.getPrecursorNce(), observed.getPrecursorNce(), 1e-9);
         assertEquals(expected.getPrecursorMz(), observed.getPrecursorMz(), 1e-9);
         assertEquals(expected.getRetentionTimeInSeconds(), observed.getRetentionTimeInSeconds(), 1e-5f);
+        assertEquals(expected.getCCS(), observed.getCCS());
         assertArrayEquals(expected.getMassArray(), observed.getMassArray(), 1e-6);
         assertArrayEquals(expected.getIntensityArray(), observed.getIntensityArray(), 1e-6f);
         assertArrayEquals(expected.getIonTypeArray(), observed.getIonTypeArray());

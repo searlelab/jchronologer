@@ -13,6 +13,12 @@ public final class ChronologerLibraryOptions {
             "models/Electrician_20260225110528.torchscript.pt";
     public static final String DEFAULT_ELECTRICIAN_PREPROCESSING_RESOURCE =
             "models/Electrician_20260225110528.preprocessing.json";
+    public static final String DEFAULT_SCULPTOR_MODEL_RESOURCE =
+            ChronologerOptions.DEFAULT_SCULPTOR_MODEL_RESOURCE;
+    public static final String DEFAULT_SCULPTOR_PREPROCESSING_RESOURCE =
+            ChronologerOptions.DEFAULT_SCULPTOR_PREPROCESSING_RESOURCE;
+    public static final boolean DEFAULT_CCS_PREDICTION_ENABLED =
+            ChronologerOptions.DEFAULT_CCS_PREDICTION_ENABLED;
     public static final double DEFAULT_MASS_MATCH_EPSILON = 1e-5;
     public static final float DEFAULT_MINIMUM_REPORTED_INTENSITY = 0.01f;
 
@@ -22,6 +28,9 @@ public final class ChronologerLibraryOptions {
     private final String cartographerPreprocessingResource;
     private final String electricianModelResource;
     private final String electricianPreprocessingResource;
+    private final String sculptorModelResource;
+    private final String sculptorPreprocessingResource;
+    private final boolean ccsPredictionEnabled;
     private final int batchSize;
     private final int cartographerBatchSize;
     private final int inferenceThreads;
@@ -36,6 +45,9 @@ public final class ChronologerLibraryOptions {
         this.cartographerPreprocessingResource = builder.cartographerPreprocessingResource;
         this.electricianModelResource = builder.electricianModelResource;
         this.electricianPreprocessingResource = builder.electricianPreprocessingResource;
+        this.sculptorModelResource = builder.sculptorModelResource;
+        this.sculptorPreprocessingResource = builder.sculptorPreprocessingResource;
+        this.ccsPredictionEnabled = builder.ccsPredictionEnabled;
         this.batchSize = builder.batchSize;
         this.cartographerBatchSize = builder.cartographerBatchSize;
         this.inferenceThreads = builder.inferenceThreads;
@@ -72,6 +84,18 @@ public final class ChronologerLibraryOptions {
         return electricianPreprocessingResource;
     }
 
+    public String getSculptorModelResource() {
+        return sculptorModelResource;
+    }
+
+    public String getSculptorPreprocessingResource() {
+        return sculptorPreprocessingResource;
+    }
+
+    public boolean isCCSPredictionEnabled() {
+        return ccsPredictionEnabled;
+    }
+
     public int getBatchSize() {
         return batchSize;
     }
@@ -103,6 +127,9 @@ public final class ChronologerLibraryOptions {
         private String cartographerPreprocessingResource = DEFAULT_CARTOGRAPHER_PREPROCESSING_RESOURCE;
         private String electricianModelResource = DEFAULT_ELECTRICIAN_MODEL_RESOURCE;
         private String electricianPreprocessingResource = DEFAULT_ELECTRICIAN_PREPROCESSING_RESOURCE;
+        private String sculptorModelResource = DEFAULT_SCULPTOR_MODEL_RESOURCE;
+        private String sculptorPreprocessingResource = DEFAULT_SCULPTOR_PREPROCESSING_RESOURCE;
+        private boolean ccsPredictionEnabled = DEFAULT_CCS_PREDICTION_ENABLED;
         private int batchSize = ChronologerOptions.DEFAULT_BATCH_SIZE;
         private int cartographerBatchSize = ChronologerOptions.DEFAULT_BATCH_SIZE;
         private int inferenceThreads = ChronologerOptions.DEFAULT_INFERENCE_THREADS;
@@ -140,6 +167,21 @@ public final class ChronologerLibraryOptions {
 
         public Builder electricianPreprocessingResource(String electricianPreprocessingResource) {
             this.electricianPreprocessingResource = electricianPreprocessingResource;
+            return this;
+        }
+
+        public Builder sculptorModelResource(String sculptorModelResource) {
+            this.sculptorModelResource = sculptorModelResource;
+            return this;
+        }
+
+        public Builder sculptorPreprocessingResource(String sculptorPreprocessingResource) {
+            this.sculptorPreprocessingResource = sculptorPreprocessingResource;
+            return this;
+        }
+
+        public Builder ccsPredictionEnabled(boolean ccsPredictionEnabled) {
+            this.ccsPredictionEnabled = ccsPredictionEnabled;
             return this;
         }
 
@@ -191,6 +233,12 @@ public final class ChronologerLibraryOptions {
             }
             if (electricianPreprocessingResource == null || electricianPreprocessingResource.isBlank()) {
                 throw new IllegalArgumentException("Electrician preprocessing resource must be non-empty.");
+            }
+            if (sculptorModelResource == null || sculptorModelResource.isBlank()) {
+                throw new IllegalArgumentException("Sculptor model resource must be non-empty.");
+            }
+            if (sculptorPreprocessingResource == null || sculptorPreprocessingResource.isBlank()) {
+                throw new IllegalArgumentException("Sculptor preprocessing resource must be non-empty.");
             }
             if (batchSize <= 0) {
                 throw new IllegalArgumentException("Batch size must be positive.");

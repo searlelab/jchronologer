@@ -36,6 +36,24 @@ class CartographerBatchPredictorTest {
     }
 
     @Test
+    void predictTwoInputReturnsExpectedOutputShapeForSculptor() {
+        try (CartographerBatchPredictor predictor = new CartographerBatchPredictor(
+                ChronologerLibraryOptions.DEFAULT_SCULPTOR_MODEL_RESOURCE)) {
+            long[][] tokens = new long[][] {new long[52], new long[52]};
+            float[][] charge = new float[][] {
+                new float[] {0f, 1f, 0f, 0f, 0f, 0f},
+                new float[] {0f, 0f, 1f, 0f, 0f, 0f}
+            };
+
+            float[][] output = predictor.predict(tokens, charge);
+
+            assertEquals(2, output.length);
+            assertEquals(1, output[0].length);
+            assertEquals(1, output[1].length);
+        }
+    }
+
+    @Test
     void predictRejectsMismatchedBatchSizes() {
         try (CartographerBatchPredictor predictor = new CartographerBatchPredictor(
                 ChronologerLibraryOptions.DEFAULT_CARTOGRAPHER_MODEL_RESOURCE)) {

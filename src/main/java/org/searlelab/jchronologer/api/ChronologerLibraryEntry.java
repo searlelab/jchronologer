@@ -1,6 +1,7 @@
 package org.searlelab.jchronologer.api;
 
 import java.util.Arrays;
+import java.util.Optional;
 import org.searlelab.jchronologer.preprocessing.PeptideSequenceConverter;
 
 /**
@@ -17,6 +18,7 @@ public final class ChronologerLibraryEntry {
     private final double[] massArray;
     private final float[] intensityArray;
     private final String[] ionTypeArray;
+    private final Optional<Float> ccs;
 
     public ChronologerLibraryEntry(
             String unimodPeptideSequence,
@@ -27,6 +29,28 @@ public final class ChronologerLibraryEntry {
             double[] massArray,
             float[] intensityArray,
             String[] ionTypeArray) {
+        this(
+                unimodPeptideSequence,
+                precursorCharge,
+                precursorNce,
+                precursorMz,
+                retentionTimeInSeconds,
+                massArray,
+                intensityArray,
+                ionTypeArray,
+                Optional.empty());
+    }
+
+    public ChronologerLibraryEntry(
+            String unimodPeptideSequence,
+            byte precursorCharge,
+            double precursorNce,
+            double precursorMz,
+            float retentionTimeInSeconds,
+            double[] massArray,
+            float[] intensityArray,
+            String[] ionTypeArray,
+            Optional<Float> ccs) {
         this.unimodPeptideSequence = unimodPeptideSequence;
         this.precursorCharge = precursorCharge;
         this.precursorNce = precursorNce;
@@ -35,6 +59,7 @@ public final class ChronologerLibraryEntry {
         this.massArray = Arrays.copyOf(massArray, massArray.length);
         this.intensityArray = Arrays.copyOf(intensityArray, intensityArray.length);
         this.ionTypeArray = Arrays.copyOf(ionTypeArray, ionTypeArray.length);
+        this.ccs = ccs == null ? Optional.empty() : ccs;
     }
 
     public String getUnimodPeptideSequence() {
@@ -67,6 +92,10 @@ public final class ChronologerLibraryEntry {
 
     public String[] getIonTypeArray() {
         return Arrays.copyOf(ionTypeArray, ionTypeArray.length);
+    }
+
+    public Optional<Float> getCCS() {
+        return ccs;
     }
 
     /**

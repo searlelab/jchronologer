@@ -1,26 +1,2 @@
-Chronologer model artifacts were exported from:
-/Users/searle.brian/Documents/projects/chronologer
-
-Commands used:
-1) venv/bin/python Export_Chronologer.py \
-   --model-file models/Chronologer_20220601193755.pt \
-   --output-prefix /tmp/jchronologer_artifacts/Chronologer_20220601193755 \
-   --format torchscript
-
-2) venv/bin/python Export_Chronologer_Golden.py \
-   /tmp/jchronologer_artifacts/parity_cases.tsv \
-   /tmp/jchronologer_artifacts/chronologer_parity_cases \
-   --model-file models/Chronologer_20220601193755.pt
-
-Electrician model artifacts were exported from:
-/Users/searle.brian/Documents/projects/cartographer
-
-Command used:
-PYTHONPATH=src python src/export_electrician.py \
-  --model_file models/Electrician_20260225110528.pt \
-  --embed_dim 24 \
-  --n_blocks 3 \
-  --kernel 5 \
-  --dilation_schedule 1,4,8 \
-  --block_variant full \
-  --bottleneck_ratio 0.5
+Model artifacts were exported from:
+https://github.com/searlelab/cartographer

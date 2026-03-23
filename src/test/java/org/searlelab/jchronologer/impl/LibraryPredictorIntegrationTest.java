@@ -44,6 +44,7 @@ class LibraryPredictorIntegrationTest {
             assertEquals((byte) 2, entry.getPrecursorCharge());
             assertTrue(entry.getPrecursorMz() > 0.0);
             assertTrue(entry.getRetentionTimeInSeconds() > 0.0f);
+            assertTrue(entry.getCCS().isPresent());
             assertEntryHasValidSpectrum(entry, 5);
             assertTrue(countAbove(entry.getIntensityArray(), 0.10f) >= 2);
         }
@@ -75,6 +76,8 @@ class LibraryPredictorIntegrationTest {
             assertEquals(first.getPrecursorNce(), second.getPrecursorNce());
             assertEquals(first.getPrecursorMz(), second.getPrecursorMz(), 1e-9);
             assertEquals(first.getRetentionTimeInSeconds(), second.getRetentionTimeInSeconds(), 1e-5f);
+            assertTrue(first.getCCS().isEmpty());
+            assertTrue(second.getCCS().isEmpty());
 
             assertEntryHasValidSpectrum(first, 5);
             assertEntryHasValidSpectrum(second, 5);
@@ -110,10 +113,13 @@ class LibraryPredictorIntegrationTest {
             assertEquals((byte) 2, tmtCharge2.getPrecursorCharge());
             assertEquals((byte) 3, tmtCharge3.getPrecursorCharge());
             assertEquals(tmtCharge2.getRetentionTimeInSeconds(), tmtCharge3.getRetentionTimeInSeconds(), 1e-5f);
+            assertTrue(tmtCharge2.getCCS().isEmpty());
+            assertTrue(tmtCharge3.getCCS().isEmpty());
 
             assertTrue(phosphoOx.getUnimodPeptideSequence().contains("UNIMOD:35"));
             assertTrue(phosphoOx.getUnimodPeptideSequence().contains("UNIMOD:21"));
             assertTrue(phosphoOx.getUnimodPeptideSequence().contains("UNIMOD:1"));
+            assertTrue(phosphoOx.getCCS().isPresent());
 
             for (ChronologerLibraryEntry entry : entries) {
                 assertEntryHasValidSpectrum(entry, 5);
@@ -136,6 +142,7 @@ class LibraryPredictorIntegrationTest {
                 assertEquals((byte) (i + 1), entry.getPrecursorCharge());
                 assertEquals(30.0, entry.getPrecursorNce());
                 assertEquals("[]-TASEFDSAIAQDK-[]", entry.getUnimodPeptideSequence());
+                assertTrue(entry.getCCS().isPresent());
                 assertEntryHasValidSpectrum(entry, 5);
             }
         }
@@ -149,6 +156,53 @@ class LibraryPredictorIntegrationTest {
         try (ChronologerLibraryPredictor predictor = ChronologerFactory.createLibraryPredictorDefault()) {
             List<ChronologerLibraryEntry> entries = predictor.predict(List.of(automaticRequest));
             assertEquals(0, entries.size());
+        }
+    }
+
+    @Test
+    void ccsPredictionsAreDenormalizedToPhysicalScale() {
+        List<String> peptides = List.of(
+                "[]-HC[UNIMOD:4]VDPAVIAAIISR-[]",
+                "[]-TLLISSLSPALPAEHLEDR-[]",
+                "[]-TPIGSFLGSLS-[]",
+                "[]-ANAEKTSGSNVKIVKVKKE-[]",
+                "[UNIMOD:737]-K[UNIMOD:737]PGLAITFAK[UNIMOD:737]-[]");
+        List<LibraryPredictionRequest> requests = new ArrayList<>();
+        for (String peptide : peptides) {
+            requests.add(new LibraryPredictionRequest(peptide, 33.0, 0.0));
+        }
+
+        Map<String, float[]> expectedByPeptide = new LinkedHashMap<>();
+        expectedByPeptide.put(peptides.get(0), new float[] {389.715f, 435.296f, 503.681f, 620.384f, 738.567f, 890.815f});
+        expectedByPeptide.put(peptides.get(1), new float[] {456.165f, 501.746f, 570.131f, 686.834f, 805.017f, 957.265f});
+        expectedByPeptide.put(peptides.get(2), new float[] {320.342f, 365.924f, 434.309f, 551.011f, 669.194f, 821.443f});
+        expectedByPeptide.put(peptides.get(3), new float[] {459.073f, 504.655f, 573.040f, 689.743f, 807.925f, 960.174f});
+
+        try (ChronologerLibraryPredictor predictor = ChronologerFactory.createLibraryPredictorDefault()) {
+            List<ChronologerLibraryEntry> entries = predictor.predict(requests);
+            assertEquals(30, entries.size());
+
+            Map<String, List<ChronologerLibraryEntry>> entriesByPeptide = new LinkedHashMap<>();
+            for (ChronologerLibraryEntry entry : entries) {
+                entriesByPeptide.computeIfAbsent(entry.getUnimodPeptideSequence(), key -> new ArrayList<>()).add(entry);
+            }
+
+            for (Map.Entry<String, float[]> expected : expectedByPeptide.entrySet()) {
+                List<ChronologerLibraryEntry> peptideEntries = entriesByPeptide.get(expected.getKey());
+                assertEquals(6, peptideEntries.size(), "Expected six charge states for " + expected.getKey());
+                for (int i = 0; i < peptideEntries.size(); i++) {
+                    ChronologerLibraryEntry entry = peptideEntries.get(i);
+                    assertEquals((byte) (i + 1), entry.getPrecursorCharge());
+                    assertTrue(entry.getCCS().isPresent(), "Expected CCS for " + expected.getKey());
+                    assertEquals(expected.getValue()[i], entry.getCCS().get(), 0.02f);
+                }
+            }
+
+            List<ChronologerLibraryEntry> unsupported = entriesByPeptide.get(peptides.get(4));
+            assertEquals(6, unsupported.size(), "Expected six charge states for " + peptides.get(4));
+            for (ChronologerLibraryEntry entry : unsupported) {
+                assertTrue(entry.getCCS().isEmpty(), "Expected unsupported CCS for " + peptides.get(4));
+            }
         }
     }
 
@@ -190,6 +244,7 @@ class LibraryPredictorIntegrationTest {
 
             for (ChronologerLibraryEntry entry : entries) {
                 assertEquals(33.0, entry.getPrecursorNce());
+                assertTrue(entry.getCCS().isPresent());
                 assertEntryHasValidSpectrum(entry, 5);
             }
         }
@@ -264,6 +319,26 @@ class LibraryPredictorIntegrationTest {
         assertThrows(IllegalStateException.class, closedPredictor::init);
         assertThrows(IllegalStateException.class, () -> closedPredictor.predict(List.of(
                 new LibraryPredictionRequest("PEPTIDEK", List.of(new PrecursorCondition((byte) 2, 30.0))))));
+    }
+
+    @Test
+    void ccsPredictionCanBeDisabledWithoutLoadingSculptorResources() {
+        ChronologerLibraryOptions options = ChronologerLibraryOptions.builder()
+                .ccsPredictionEnabled(false)
+                .sculptorModelResource("models/missing_sculptor_model.torchscript.pt")
+                .sculptorPreprocessingResource("models/missing_sculptor_preprocessing.json")
+                .build();
+
+        LibraryPredictionRequest request = new LibraryPredictionRequest(
+                "TASEFDSAIAQDK",
+                List.of(new PrecursorCondition((byte) 2, 27.0)));
+
+        try (ChronologerLibraryPredictor predictor = ChronologerFactory.createLibraryPredictor(options)) {
+            List<ChronologerLibraryEntry> entries = predictor.predict(List.of(request));
+            assertEquals(1, entries.size());
+            assertTrue(entries.get(0).getCCS().isEmpty());
+            assertEntryHasValidSpectrum(entries.get(0), 5);
+        }
     }
 
     private static void assertEntryHasValidSpectrum(ChronologerLibraryEntry entry, int minimumIonCount) {

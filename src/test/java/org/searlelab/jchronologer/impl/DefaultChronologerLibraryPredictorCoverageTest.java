@@ -89,6 +89,39 @@ class DefaultChronologerLibraryPredictorCoverageTest {
         assertTrue(cause.getMessage().contains("Failed to parse electrician metadata resource"));
     }
 
+    @Test
+    void loadSculptorMetadataParsesBundledResource() throws Exception {
+        Object metadata = invokeLoadSculptorMetadata("models/Sculptor_20260311095327.preprocessing.json");
+
+        assertEquals(50, getIntField(metadata, "maxPeptideLength"));
+        assertEquals(6, getIntField(metadata, "chargeStateCount"));
+        assertEquals(1, getIntField(metadata, "outputWidth"));
+        assertEquals(490.40022836690935, getDoubleField(metadata, "ccsMean"), 1e-12);
+        assertEquals(126.1480333943971, getDoubleField(metadata, "ccsStd"), 1e-12);
+    }
+
+    @Test
+    void loadSculptorMetadataRejectsMissingResource() throws Exception {
+        Method method = loadSculptorMetadataMethod();
+        InvocationTargetException error = assertThrows(
+                InvocationTargetException.class,
+                () -> method.invoke(null, "data/preprocessing/does_not_exist.json"));
+
+        IllegalArgumentException cause = assertInstanceOf(IllegalArgumentException.class, error.getCause());
+        assertTrue(cause.getMessage().contains("Missing sculptor metadata resource"));
+    }
+
+    @Test
+    void loadSculptorMetadataRejectsInvalidShapeMetadata() throws Exception {
+        Method method = loadSculptorMetadataMethod();
+        InvocationTargetException error = assertThrows(
+                InvocationTargetException.class,
+                () -> method.invoke(null, "data/preprocessing/cartographer_metadata_minimal.json"));
+
+        IllegalStateException cause = assertInstanceOf(IllegalStateException.class, error.getCause());
+        assertTrue(cause.getMessage().contains("Invalid Sculptor max_peptide_len"));
+    }
+
     private static Object invokeLoadCartographerMetadata(String resource) throws Exception {
         Method method = loadCartographerMetadataMethod();
         return method.invoke(null, resource);
@@ -96,6 +129,11 @@ class DefaultChronologerLibraryPredictorCoverageTest {
 
     private static Object invokeLoadElectricianMetadata(String resource) throws Exception {
         Method method = loadElectricianMetadataMethod();
+        return method.invoke(null, resource);
+    }
+
+    private static Object invokeLoadSculptorMetadata(String resource) throws Exception {
+        Method method = loadSculptorMetadataMethod();
         return method.invoke(null, resource);
     }
 
@@ -115,9 +153,23 @@ class DefaultChronologerLibraryPredictorCoverageTest {
         return method;
     }
 
+    private static Method loadSculptorMetadataMethod() throws NoSuchMethodException {
+        Method method = DefaultChronologerLibraryPredictor.class.getDeclaredMethod(
+                "loadSculptorMetadata",
+                String.class);
+        method.setAccessible(true);
+        return method;
+    }
+
     private static int getIntField(Object target, String fieldName) throws Exception {
         Field field = target.getClass().getDeclaredField(fieldName);
         field.setAccessible(true);
         return field.getInt(target);
+    }
+
+    private static double getDoubleField(Object target, String fieldName) throws Exception {
+        Field field = target.getClass().getDeclaredField(fieldName);
+        field.setAccessible(true);
+        return field.getDouble(target);
     }
 }

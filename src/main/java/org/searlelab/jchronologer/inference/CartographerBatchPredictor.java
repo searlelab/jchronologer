@@ -64,23 +64,46 @@ public final class CartographerBatchPredictor implements AutoCloseable {
             NDArray nce = manager.create(nceBatch);
 
             NDList output = predictor.predict(new NDList(tokens, charges, nce));
-            NDArray out = output.singletonOrThrow();
-            float[] flattened = out.toFloatArray();
-
-            int batchSize = tokenBatch.length;
-            int width = flattened.length / batchSize;
-            if (width * batchSize != flattened.length) {
-                throw new IllegalStateException("Unexpected Cartographer output shape.");
-            }
-
-            float[][] reshaped = new float[batchSize][width];
-            for (int i = 0; i < batchSize; i++) {
-                System.arraycopy(flattened, i * width, reshaped[i], 0, width);
-            }
-            return reshaped;
+            return reshapeOutput(output.singletonOrThrow().toFloatArray(), tokenBatch.length, "Cartographer");
         } catch (TranslateException e) {
             throw new IllegalStateException("Failed to run Cartographer inference.", e);
         }
+    }
+
+    /**
+     * Executes one two-input batch (tokens + charge one-hot), used by Sculptor.
+     */
+    public float[][] predict(long[][] tokenBatch, float[][] chargeBatch) {
+        if (tokenBatch.length != chargeBatch.length) {
+            throw new IllegalArgumentException("Cartographer batch inputs must have matching batch size.");
+        }
+        if (tokenBatch.length == 0) {
+            return new float[0][1];
+        }
+
+        try (NDManager manager = model.getNDManager().newSubManager()) {
+            Predictor<NDList, NDList> predictor = threadLocalPredictor.get();
+            NDArray tokens = manager.create(tokenBatch);
+            NDArray charges = manager.create(chargeBatch);
+
+            NDList output = predictor.predict(new NDList(tokens, charges));
+            return reshapeOutput(output.singletonOrThrow().toFloatArray(), tokenBatch.length, "Sculptor");
+        } catch (TranslateException e) {
+            throw new IllegalStateException("Failed to run Sculptor inference.", e);
+        }
+    }
+
+    private static float[][] reshapeOutput(float[] flattened, int batchSize, String modelName) {
+        int width = flattened.length / batchSize;
+        if (width * batchSize != flattened.length) {
+            throw new IllegalStateException("Unexpected " + modelName + " output shape.");
+        }
+
+        float[][] reshaped = new float[batchSize][width];
+        for (int i = 0; i < batchSize; i++) {
+            System.arraycopy(flattened, i * width, reshaped[i], 0, width);
+        }
+        return reshaped;
     }
 
     @Override

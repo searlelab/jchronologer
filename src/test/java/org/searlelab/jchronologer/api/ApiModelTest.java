@@ -5,9 +5,11 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 class ApiModelTest {
@@ -73,6 +75,9 @@ class ApiModelTest {
         ChronologerOptions defaults = ChronologerOptions.builder().build();
         assertEquals(ChronologerOptions.DEFAULT_MODEL_RESOURCE, defaults.getModelResource());
         assertEquals(ChronologerOptions.DEFAULT_PREPROCESSING_RESOURCE, defaults.getPreprocessingResource());
+        assertEquals(ChronologerOptions.DEFAULT_SCULPTOR_MODEL_RESOURCE, defaults.getSculptorModelResource());
+        assertEquals(ChronologerOptions.DEFAULT_SCULPTOR_PREPROCESSING_RESOURCE, defaults.getSculptorPreprocessingResource());
+        assertEquals(ChronologerOptions.DEFAULT_CCS_PREDICTION_ENABLED, defaults.isCCSPredictionEnabled());
         assertEquals(ChronologerOptions.DEFAULT_BATCH_SIZE, defaults.getBatchSize());
         assertEquals(ChronologerOptions.DEFAULT_INFERENCE_THREADS, defaults.getInferenceThreads());
         assertEquals(false, defaults.isVerboseLogging());
@@ -80,12 +85,18 @@ class ApiModelTest {
         ChronologerOptions custom = ChronologerOptions.builder()
                 .modelResource("models/custom.pt")
                 .preprocessingResource("models/custom.json")
+                .sculptorModelResource("models/sculptor-custom.pt")
+                .sculptorPreprocessingResource("models/sculptor-custom.json")
+                .ccsPredictionEnabled(false)
                 .batchSize(128)
                 .inferenceThreads(2)
                 .verboseLogging(true)
                 .build();
         assertEquals("models/custom.pt", custom.getModelResource());
         assertEquals("models/custom.json", custom.getPreprocessingResource());
+        assertEquals("models/sculptor-custom.pt", custom.getSculptorModelResource());
+        assertEquals("models/sculptor-custom.json", custom.getSculptorPreprocessingResource());
+        assertEquals(false, custom.isCCSPredictionEnabled());
         assertEquals(128, custom.getBatchSize());
         assertEquals(2, custom.getInferenceThreads());
         assertEquals(true, custom.isVerboseLogging());
@@ -104,6 +115,12 @@ class ApiModelTest {
                 .build());
         assertThrows(IllegalArgumentException.class, () -> ChronologerOptions.builder()
                 .preprocessingResource("")
+                .build());
+        assertThrows(IllegalArgumentException.class, () -> ChronologerOptions.builder()
+                .sculptorModelResource(" ")
+                .build());
+        assertThrows(IllegalArgumentException.class, () -> ChronologerOptions.builder()
+                .sculptorPreprocessingResource(null)
                 .build());
         assertThrows(IllegalArgumentException.class, () -> ChronologerOptions.builder()
                 .batchSize(0)
@@ -206,7 +223,20 @@ class ApiModelTest {
         assertArrayEquals(new double[] {100.0, 200.0}, entry.getMassArray());
         assertArrayEquals(new float[] {0.2f, 0.8f}, entry.getIntensityArray());
         assertArrayEquals(new String[] {"1+y1", "1+b1"}, entry.getIonTypeArray());
+        assertTrue(entry.getCCS().isEmpty());
         assertEquals("[+42.010565]AK[+229.162932]", entry.getPeptideModSeq());
+
+        ChronologerLibraryEntry entryWithCCS = new ChronologerLibraryEntry(
+                "[UNIMOD:1]-AK[UNIMOD:737]-[]",
+                (byte) 2,
+                0.3,
+                456.7,
+                123.4f,
+                new double[] {100.0},
+                new float[] {0.5f},
+                new String[] {"1+y1"},
+                Optional.of(0.123f));
+        assertEquals(Optional.of(0.123f), entryWithCCS.getCCS());
     }
 
     @Test
@@ -253,6 +283,15 @@ class ApiModelTest {
         assertEquals(
                 ChronologerLibraryOptions.DEFAULT_ELECTRICIAN_PREPROCESSING_RESOURCE,
                 defaults.getElectricianPreprocessingResource());
+        assertEquals(
+                ChronologerLibraryOptions.DEFAULT_SCULPTOR_MODEL_RESOURCE,
+                defaults.getSculptorModelResource());
+        assertEquals(
+                ChronologerLibraryOptions.DEFAULT_SCULPTOR_PREPROCESSING_RESOURCE,
+                defaults.getSculptorPreprocessingResource());
+        assertEquals(
+                ChronologerLibraryOptions.DEFAULT_CCS_PREDICTION_ENABLED,
+                defaults.isCCSPredictionEnabled());
         assertEquals(ChronologerLibraryOptions.DEFAULT_MASS_MATCH_EPSILON, defaults.getMassMatchEpsilon());
         assertEquals(
                 ChronologerLibraryOptions.DEFAULT_MINIMUM_REPORTED_INTENSITY,
@@ -269,6 +308,12 @@ class ApiModelTest {
                 .build());
         assertThrows(IllegalArgumentException.class, () -> ChronologerLibraryOptions.builder()
                 .electricianPreprocessingResource(null)
+                .build());
+        assertThrows(IllegalArgumentException.class, () -> ChronologerLibraryOptions.builder()
+                .sculptorModelResource(" ")
+                .build());
+        assertThrows(IllegalArgumentException.class, () -> ChronologerLibraryOptions.builder()
+                .sculptorPreprocessingResource(null)
                 .build());
     }
 }

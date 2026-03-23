@@ -17,6 +17,9 @@ class ChronologerLibraryOptionsBuilderTest {
                 .cartographerPreprocessingResource("models/cartographer-custom.json")
                 .electricianModelResource("models/electrician-custom.pt")
                 .electricianPreprocessingResource("models/electrician-custom.json")
+                .sculptorModelResource("models/sculptor-custom.pt")
+                .sculptorPreprocessingResource("models/sculptor-custom.json")
+                .ccsPredictionEnabled(false)
                 .batchSize(321)
                 .cartographerBatchSize(123)
                 .inferenceThreads(4)
@@ -31,6 +34,9 @@ class ChronologerLibraryOptionsBuilderTest {
         assertEquals("models/cartographer-custom.json", options.getCartographerPreprocessingResource());
         assertEquals("models/electrician-custom.pt", options.getElectricianModelResource());
         assertEquals("models/electrician-custom.json", options.getElectricianPreprocessingResource());
+        assertEquals("models/sculptor-custom.pt", options.getSculptorModelResource());
+        assertEquals("models/sculptor-custom.json", options.getSculptorPreprocessingResource());
+        assertEquals(false, options.isCCSPredictionEnabled());
         assertEquals(321, options.getBatchSize());
         assertEquals(123, options.getCartographerBatchSize());
         assertEquals(4, options.getInferenceThreads());
@@ -81,6 +87,20 @@ class ChronologerLibraryOptionsBuilderTest {
                 .build());
         assertThrows(IllegalArgumentException.class, () -> ChronologerLibraryOptions.builder()
                 .electricianPreprocessingResource(" ")
+                .build());
+
+        assertThrows(IllegalArgumentException.class, () -> ChronologerLibraryOptions.builder()
+                .sculptorModelResource(null)
+                .build());
+        assertThrows(IllegalArgumentException.class, () -> ChronologerLibraryOptions.builder()
+                .sculptorModelResource(" ")
+                .build());
+
+        assertThrows(IllegalArgumentException.class, () -> ChronologerLibraryOptions.builder()
+                .sculptorPreprocessingResource(null)
+                .build());
+        assertThrows(IllegalArgumentException.class, () -> ChronologerLibraryOptions.builder()
+                .sculptorPreprocessingResource(" ")
                 .build());
     }
 
