@@ -272,25 +272,25 @@ class ApiModelTest {
     void chronologerLibraryOptionsBuilderSupportsDefaultsAndValidation() {
         ChronologerLibraryOptions defaults = ChronologerLibraryOptions.builder().build();
         assertEquals(
-                ChronologerLibraryOptions.DEFAULT_CARTOGRAPHER_MODEL_RESOURCE,
+        		ChronologerOptions.DEFAULT_CARTOGRAPHER_MODEL_RESOURCE,
                 defaults.getCartographerModelResource());
         assertEquals(
-                ChronologerLibraryOptions.DEFAULT_CARTOGRAPHER_PREPROCESSING_RESOURCE,
+        		ChronologerOptions.DEFAULT_CARTOGRAPHER_PREPROCESSING_RESOURCE,
                 defaults.getCartographerPreprocessingResource());
         assertEquals(
-                ChronologerLibraryOptions.DEFAULT_ELECTRICIAN_MODEL_RESOURCE,
+        		ChronologerOptions.DEFAULT_ELECTRICIAN_MODEL_RESOURCE,
                 defaults.getElectricianModelResource());
         assertEquals(
-                ChronologerLibraryOptions.DEFAULT_ELECTRICIAN_PREPROCESSING_RESOURCE,
+        		ChronologerOptions.DEFAULT_ELECTRICIAN_PREPROCESSING_RESOURCE,
                 defaults.getElectricianPreprocessingResource());
         assertEquals(
-                ChronologerLibraryOptions.DEFAULT_SCULPTOR_MODEL_RESOURCE,
+        		ChronologerOptions.DEFAULT_SCULPTOR_MODEL_RESOURCE,
                 defaults.getSculptorModelResource());
         assertEquals(
-                ChronologerLibraryOptions.DEFAULT_SCULPTOR_PREPROCESSING_RESOURCE,
+        		ChronologerOptions.DEFAULT_SCULPTOR_PREPROCESSING_RESOURCE,
                 defaults.getSculptorPreprocessingResource());
         assertEquals(
-                ChronologerLibraryOptions.DEFAULT_CCS_PREDICTION_ENABLED,
+        		ChronologerOptions.DEFAULT_CCS_PREDICTION_ENABLED,
                 defaults.isCCSPredictionEnabled());
         assertEquals(ChronologerLibraryOptions.DEFAULT_MASS_MATCH_EPSILON, defaults.getMassMatchEpsilon());
         assertEquals(

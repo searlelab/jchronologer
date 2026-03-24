@@ -5,20 +5,6 @@ package org.searlelab.jchronologer.api;
  */
 public final class ChronologerLibraryOptions {
 
-    public static final String DEFAULT_CARTOGRAPHER_MODEL_RESOURCE =
-            "models/Cartographer_20260217162213.torchscript.pt";
-    public static final String DEFAULT_CARTOGRAPHER_PREPROCESSING_RESOURCE =
-            "models/Cartographer_20260217162213.preprocessing.json";
-    public static final String DEFAULT_ELECTRICIAN_MODEL_RESOURCE =
-            "models/Electrician_20260225110528.torchscript.pt";
-    public static final String DEFAULT_ELECTRICIAN_PREPROCESSING_RESOURCE =
-            "models/Electrician_20260225110528.preprocessing.json";
-    public static final String DEFAULT_SCULPTOR_MODEL_RESOURCE =
-            ChronologerOptions.DEFAULT_SCULPTOR_MODEL_RESOURCE;
-    public static final String DEFAULT_SCULPTOR_PREPROCESSING_RESOURCE =
-            ChronologerOptions.DEFAULT_SCULPTOR_PREPROCESSING_RESOURCE;
-    public static final boolean DEFAULT_CCS_PREDICTION_ENABLED =
-            ChronologerOptions.DEFAULT_CCS_PREDICTION_ENABLED;
     public static final double DEFAULT_MASS_MATCH_EPSILON = 1e-5;
     public static final float DEFAULT_MINIMUM_REPORTED_INTENSITY = 0.01f;
 
@@ -123,13 +109,13 @@ public final class ChronologerLibraryOptions {
     public static final class Builder {
         private String chronologerModelResource = ChronologerOptions.DEFAULT_MODEL_RESOURCE;
         private String chronologerPreprocessingResource = ChronologerOptions.DEFAULT_PREPROCESSING_RESOURCE;
-        private String cartographerModelResource = DEFAULT_CARTOGRAPHER_MODEL_RESOURCE;
-        private String cartographerPreprocessingResource = DEFAULT_CARTOGRAPHER_PREPROCESSING_RESOURCE;
-        private String electricianModelResource = DEFAULT_ELECTRICIAN_MODEL_RESOURCE;
-        private String electricianPreprocessingResource = DEFAULT_ELECTRICIAN_PREPROCESSING_RESOURCE;
-        private String sculptorModelResource = DEFAULT_SCULPTOR_MODEL_RESOURCE;
-        private String sculptorPreprocessingResource = DEFAULT_SCULPTOR_PREPROCESSING_RESOURCE;
-        private boolean ccsPredictionEnabled = DEFAULT_CCS_PREDICTION_ENABLED;
+        private String cartographerModelResource = ChronologerOptions.DEFAULT_CARTOGRAPHER_MODEL_RESOURCE;
+        private String cartographerPreprocessingResource = ChronologerOptions.DEFAULT_CARTOGRAPHER_PREPROCESSING_RESOURCE;
+        private String electricianModelResource = ChronologerOptions.DEFAULT_ELECTRICIAN_MODEL_RESOURCE;
+        private String electricianPreprocessingResource = ChronologerOptions.DEFAULT_ELECTRICIAN_PREPROCESSING_RESOURCE;
+        private String sculptorModelResource = ChronologerOptions.DEFAULT_SCULPTOR_MODEL_RESOURCE;
+        private String sculptorPreprocessingResource = ChronologerOptions.DEFAULT_SCULPTOR_PREPROCESSING_RESOURCE;
+        private boolean ccsPredictionEnabled = ChronologerOptions.DEFAULT_CCS_PREDICTION_ENABLED;
         private int batchSize = ChronologerOptions.DEFAULT_BATCH_SIZE;
         private int cartographerBatchSize = ChronologerOptions.DEFAULT_BATCH_SIZE;
         private int inferenceThreads = ChronologerOptions.DEFAULT_INFERENCE_THREADS;

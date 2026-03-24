@@ -13,8 +13,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+
 import org.junit.jupiter.api.Test;
-import org.searlelab.jchronologer.api.ChronologerLibraryOptions;
 import org.searlelab.jchronologer.api.ChronologerOptions;
 import org.searlelab.jchronologer.preprocessing.ChronologerPreprocessor;
 import org.searlelab.jchronologer.preprocessing.PreprocessingMetadataLoader;
@@ -35,7 +35,7 @@ class ElectricianBatchPredictorTest {
     @Test
     void predictReturnsExpectedOutputShape() {
         try (ElectricianBatchPredictor predictor = new ElectricianBatchPredictor(
-                ChronologerLibraryOptions.DEFAULT_ELECTRICIAN_MODEL_RESOURCE)) {
+        		ChronologerOptions.DEFAULT_ELECTRICIAN_MODEL_RESOURCE)) {
             long[][] tokens = new long[][] {new long[33], new long[33], new long[33]};
 
             float[][] output = predictor.predict(tokens);
@@ -50,7 +50,7 @@ class ElectricianBatchPredictorTest {
     @Test
     void predictWithEmptyBatchReturnsEmptyOutput() {
         try (ElectricianBatchPredictor predictor = new ElectricianBatchPredictor(
-                ChronologerLibraryOptions.DEFAULT_ELECTRICIAN_MODEL_RESOURCE)) {
+        		ChronologerOptions.DEFAULT_ELECTRICIAN_MODEL_RESOURCE)) {
             float[][] output = predictor.predict(new long[][] {});
             assertEquals(0, output.length);
         }
@@ -74,7 +74,7 @@ class ElectricianBatchPredictorTest {
     @Test
     void predictInitializesThreadLocalPredictorInWorkerThread() throws Exception {
         try (ElectricianBatchPredictor predictor = new ElectricianBatchPredictor(
-                ChronologerLibraryOptions.DEFAULT_ELECTRICIAN_MODEL_RESOURCE)) {
+        		ChronologerOptions.DEFAULT_ELECTRICIAN_MODEL_RESOURCE)) {
             ExecutorService executor = Executors.newSingleThreadExecutor();
             try {
                 Future<float[][]> outputFuture = executor.submit(() -> predictor.predict(new long[][] {new long[33]}));
@@ -100,14 +100,14 @@ class ElectricianBatchPredictorTest {
                 PreprocessingMetadataLoader.loadFromClasspath(ChronologerOptions.DEFAULT_PREPROCESSING_RESOURCE));
         ChronologerPreprocessor electricianPreprocessor = new ChronologerPreprocessor(
                 PreprocessingMetadataLoader.loadFromClasspath(
-                        ChronologerLibraryOptions.DEFAULT_ELECTRICIAN_PREPROCESSING_RESOURCE));
+                		ChronologerOptions.DEFAULT_ELECTRICIAN_PREPROCESSING_RESOURCE));
 
         long[][] chronologerTokens = tokenize(randomPeptides, chronologerPreprocessor);
         long[][] electricianTokens = tokenize(randomPeptides, electricianPreprocessor);
 
         try (BatchPredictor chronologerPredictor = new BatchPredictor(ChronologerOptions.DEFAULT_MODEL_RESOURCE);
                 ElectricianBatchPredictor electricianPredictor = new ElectricianBatchPredictor(
-                        ChronologerLibraryOptions.DEFAULT_ELECTRICIAN_MODEL_RESOURCE)) {
+                		ChronologerOptions.DEFAULT_ELECTRICIAN_MODEL_RESOURCE)) {
             warmUp(chronologerPredictor, chronologerTokens, electricianPredictor, electricianTokens);
 
             double[] chronologerPerBatchNanos = new double[MEASURE_ATTEMPTS];
