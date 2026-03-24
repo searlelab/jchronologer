@@ -9,14 +9,18 @@ package org.searlelab.jchronologer.api;
  */
 public final class ChronologerOptions {
 
-    public static final String DEFAULT_MODEL_RESOURCE =
-            "models/Chronologer_20220601193755.torchscript.pt";
-    public static final String DEFAULT_PREPROCESSING_RESOURCE =
-            "models/Chronologer_20220601193755.preprocessing.json";
-    public static final String DEFAULT_SCULPTOR_MODEL_RESOURCE =
-            "models/Sculptor_20260311095327.torchscript.pt";
-    public static final String DEFAULT_SCULPTOR_PREPROCESSING_RESOURCE =
-            "models/Sculptor_20260311095327.preprocessing.json";
+	public static final String DEFAULT_MODEL_RESOURCE="models/Chronologer_20220601193755.torchscript.pt";
+	public static final String DEFAULT_PREPROCESSING_RESOURCE="models/Chronologer_20220601193755.preprocessing.json";
+
+	public static final String DEFAULT_SCULPTOR_MODEL_RESOURCE="models/Sculptor_20260311095327.torchscript.pt";
+	public static final String DEFAULT_SCULPTOR_PREPROCESSING_RESOURCE="models/Sculptor_20260311095327.preprocessing.json";
+
+	public static final String DEFAULT_CARTOGRAPHER_MODEL_RESOURCE="models/Cartographer_multistart_best_run01.torchscript.pt";
+	public static final String DEFAULT_CARTOGRAPHER_PREPROCESSING_RESOURCE="models/Cartographer_multistart_best_run01.preprocessing.json";
+
+	public static final String DEFAULT_ELECTRICIAN_MODEL_RESOURCE="models/Electrician_20260225110528.torchscript.pt";
+	public static final String DEFAULT_ELECTRICIAN_PREPROCESSING_RESOURCE="models/Electrician_20260225110528.preprocessing.json";
+    
     public static final boolean DEFAULT_CCS_PREDICTION_ENABLED = true;
     public static final int DEFAULT_BATCH_SIZE = 2048;
     public static final int DEFAULT_INFERENCE_THREADS =

@@ -1,5 +1,5 @@
 {
-  "model_file": "C:\\Users\\searl\\OneDrive\\Documents\\GitHub\\cartographer\\models\\Cartographer_20260217162213.pt",
+  "model_file": "C:\\Users\\searl\\OneDrive\\Documents\\GitHub\\cartographer\\models\\Cartographer_multistart_best_run01.pt",
   "model_family": "cartographer",
   "residues": [
     "A",

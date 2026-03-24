@@ -7,16 +7,17 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
 import org.junit.jupiter.api.Test;
 import org.searlelab.jchronologer.api.ChronologerLibraryEntry;
 import org.searlelab.jchronologer.api.ChronologerLibraryOptions;
 import org.searlelab.jchronologer.api.ChronologerLibraryPredictor;
+import org.searlelab.jchronologer.api.ChronologerOptions;
 import org.searlelab.jchronologer.api.LibraryPredictionRequest;
 import org.searlelab.jchronologer.api.PrecursorCondition;
 import org.searlelab.jchronologer.inference.ElectricianBatchPredictor;
@@ -406,12 +407,12 @@ class LibraryPredictorIntegrationTest {
     private static double probabilityJustAboveMaximumChargeProbability(String peptide) {
         ChronologerPreprocessor preprocessor = new ChronologerPreprocessor(
                 PreprocessingMetadataLoader.loadFromClasspath(
-                        ChronologerLibraryOptions.DEFAULT_ELECTRICIAN_PREPROCESSING_RESOURCE));
+                		ChronologerOptions.DEFAULT_ELECTRICIAN_PREPROCESSING_RESOURCE));
         PreprocessingOutcome outcome = preprocessor.preprocess(peptide);
         assertTrue(outcome.isAccepted(), "Failed to preprocess test peptide: " + peptide);
 
         try (ElectricianBatchPredictor predictor = new ElectricianBatchPredictor(
-                ChronologerLibraryOptions.DEFAULT_ELECTRICIAN_MODEL_RESOURCE)) {
+        		ChronologerOptions.DEFAULT_ELECTRICIAN_MODEL_RESOURCE)) {
             float[][] distributions = predictor.predict(new long[][] {outcome.getTokenArray()});
             assertEquals(1, distributions.length);
             assertEquals(6, distributions[0].length);
@@ -453,7 +454,7 @@ class LibraryPredictorIntegrationTest {
     private static Map<String, float[]> electricianChargeDistributions(List<String> unimodPeptides) {
         ChronologerPreprocessor preprocessor = new ChronologerPreprocessor(
                 PreprocessingMetadataLoader.loadFromClasspath(
-                        ChronologerLibraryOptions.DEFAULT_ELECTRICIAN_PREPROCESSING_RESOURCE));
+                		ChronologerOptions.DEFAULT_ELECTRICIAN_PREPROCESSING_RESOURCE));
         long[][] tokenBatch = new long[unimodPeptides.size()][];
         for (int i = 0; i < unimodPeptides.size(); i++) {
             String massEncoded = PeptideSequenceConverter.unimodToMassEncoded(unimodPeptides.get(i));
@@ -463,7 +464,7 @@ class LibraryPredictorIntegrationTest {
         }
 
         try (ElectricianBatchPredictor predictor = new ElectricianBatchPredictor(
-                ChronologerLibraryOptions.DEFAULT_ELECTRICIAN_MODEL_RESOURCE)) {
+        		ChronologerOptions.DEFAULT_ELECTRICIAN_MODEL_RESOURCE)) {
             float[][] distributions = predictor.predict(tokenBatch);
             assertEquals(unimodPeptides.size(), distributions.length);
 

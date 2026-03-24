@@ -12,8 +12,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
+
 import org.junit.jupiter.api.Test;
-import org.searlelab.jchronologer.api.ChronologerLibraryOptions;
+import org.searlelab.jchronologer.api.ChronologerOptions;
 import org.searlelab.jchronologer.inference.ElectricianBatchPredictor;
 import org.searlelab.jchronologer.preprocessing.ChronologerPreprocessor;
 import org.searlelab.jchronologer.preprocessing.PeptideSequenceConverter;
@@ -137,14 +138,14 @@ class LibraryReportMainIntegrationTest {
     private static double probabilityJustAboveMaximumChargeProbability(String unimodPeptide) {
         ChronologerPreprocessor preprocessor = new ChronologerPreprocessor(
                 PreprocessingMetadataLoader.loadFromClasspath(
-                        ChronologerLibraryOptions.DEFAULT_ELECTRICIAN_PREPROCESSING_RESOURCE));
+                		ChronologerOptions.DEFAULT_ELECTRICIAN_PREPROCESSING_RESOURCE));
 
         String massEncoded = PeptideSequenceConverter.unimodToMassEncoded(unimodPeptide);
         PreprocessingOutcome outcome = preprocessor.preprocess(massEncoded);
         assertTrue(outcome.isAccepted(), "Failed to preprocess test peptide: " + unimodPeptide);
 
         try (ElectricianBatchPredictor predictor = new ElectricianBatchPredictor(
-                ChronologerLibraryOptions.DEFAULT_ELECTRICIAN_MODEL_RESOURCE)) {
+        		ChronologerOptions.DEFAULT_ELECTRICIAN_MODEL_RESOURCE)) {
             float[][] distributions = predictor.predict(new long[][] {outcome.getTokenArray()});
             assertEquals(1, distributions.length);
             assertEquals(6, distributions[0].length);

@@ -8,15 +8,16 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+
 import org.junit.jupiter.api.Test;
-import org.searlelab.jchronologer.api.ChronologerLibraryOptions;
+import org.searlelab.jchronologer.api.ChronologerOptions;
 
 class CartographerBatchPredictorTest {
 
     @Test
     void predictReturnsExpectedOutputShape() {
         try (CartographerBatchPredictor predictor = new CartographerBatchPredictor(
-        		ChronologerLibraryOptions.DEFAULT_CARTOGRAPHER_MODEL_RESOURCE)) {
+        		ChronologerOptions.DEFAULT_CARTOGRAPHER_MODEL_RESOURCE)) {
             long[][] tokens = new long[][] {new long[33], new long[33]};
             float[][] charge = new float[][] {
                 new float[] {0f, 1f, 0f, 0f, 0f, 0f},
@@ -38,7 +39,7 @@ class CartographerBatchPredictorTest {
     @Test
     void predictTwoInputReturnsExpectedOutputShapeForSculptor() {
         try (CartographerBatchPredictor predictor = new CartographerBatchPredictor(
-                ChronologerLibraryOptions.DEFAULT_SCULPTOR_MODEL_RESOURCE)) {
+        		ChronologerOptions.DEFAULT_SCULPTOR_MODEL_RESOURCE)) {
             long[][] tokens = new long[][] {new long[52], new long[52]};
             float[][] charge = new float[][] {
                 new float[] {0f, 1f, 0f, 0f, 0f, 0f},
@@ -56,7 +57,7 @@ class CartographerBatchPredictorTest {
     @Test
     void predictRejectsMismatchedBatchSizes() {
         try (CartographerBatchPredictor predictor = new CartographerBatchPredictor(
-                ChronologerLibraryOptions.DEFAULT_CARTOGRAPHER_MODEL_RESOURCE)) {
+        		ChronologerOptions.DEFAULT_CARTOGRAPHER_MODEL_RESOURCE)) {
             IllegalArgumentException error = assertThrows(
                     IllegalArgumentException.class,
                     () -> predictor.predict(
@@ -70,7 +71,7 @@ class CartographerBatchPredictorTest {
     @Test
     void predictWithEmptyBatchReturnsEmptyOutput() {
         try (CartographerBatchPredictor predictor = new CartographerBatchPredictor(
-                ChronologerLibraryOptions.DEFAULT_CARTOGRAPHER_MODEL_RESOURCE)) {
+        		ChronologerOptions.DEFAULT_CARTOGRAPHER_MODEL_RESOURCE)) {
             float[][] output = predictor.predict(new long[][] {}, new float[][] {}, new float[][] {});
             assertEquals(0, output.length);
         }
@@ -94,7 +95,7 @@ class CartographerBatchPredictorTest {
     @Test
     void predictWrapsTranslateFailures() {
         try (CartographerBatchPredictor predictor = new CartographerBatchPredictor(
-                ChronologerLibraryOptions.DEFAULT_CARTOGRAPHER_MODEL_RESOURCE)) {
+        		ChronologerOptions.DEFAULT_CARTOGRAPHER_MODEL_RESOURCE)) {
             IllegalStateException error = assertThrows(
                     IllegalStateException.class,
                     () -> predictor.predict(
@@ -108,7 +109,7 @@ class CartographerBatchPredictorTest {
     @Test
     void predictInitializesThreadLocalPredictorInWorkerThread() throws Exception {
         try (CartographerBatchPredictor predictor = new CartographerBatchPredictor(
-                ChronologerLibraryOptions.DEFAULT_CARTOGRAPHER_MODEL_RESOURCE)) {
+        		ChronologerOptions.DEFAULT_CARTOGRAPHER_MODEL_RESOURCE)) {
             ExecutorService executor = Executors.newSingleThreadExecutor();
             try {
                 Future<float[][]> outputFuture = executor.submit(() -> predictor.predict(

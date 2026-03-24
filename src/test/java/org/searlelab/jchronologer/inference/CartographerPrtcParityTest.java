@@ -16,18 +16,19 @@ import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
 import org.junit.jupiter.api.Test;
 import org.searlelab.jchronologer.api.ChronologerLibraryEntry;
-import org.searlelab.jchronologer.api.ChronologerLibraryOptions;
 import org.searlelab.jchronologer.api.ChronologerLibraryPredictor;
+import org.searlelab.jchronologer.api.ChronologerOptions;
 import org.searlelab.jchronologer.api.LibraryPredictionRequest;
 import org.searlelab.jchronologer.api.PrecursorCondition;
 import org.searlelab.jchronologer.impl.ChronologerFactory;
 import org.searlelab.jchronologer.preprocessing.ChronologerPreprocessor;
-import org.searlelab.jchronologer.preprocessing.PreprocessingMetadataLoader;
-import org.searlelab.jchronologer.preprocessing.PreprocessingOutcome;
 import org.searlelab.jchronologer.preprocessing.PeptideSequenceConverter;
 import org.searlelab.jchronologer.preprocessing.PeptideSequenceConverter.ParsedUnimodSequence;
+import org.searlelab.jchronologer.preprocessing.PreprocessingMetadataLoader;
+import org.searlelab.jchronologer.preprocessing.PreprocessingOutcome;
 
 /**
  * Compares Cartographer predictions for 15 PRTC peptides against Python reference
@@ -138,7 +139,7 @@ class CartographerPrtcParityTest {
 	void prtcTokenizationMatchesPythonConvention() {
 		ChronologerPreprocessor preprocessor = new ChronologerPreprocessor(
 				PreprocessingMetadataLoader.loadFromClasspath(
-						ChronologerLibraryOptions.DEFAULT_CARTOGRAPHER_PREPROCESSING_RESOURCE));
+						ChronologerOptions.DEFAULT_CARTOGRAPHER_PREPROCESSING_RESOURCE));
 
 		for (String peptide : PRTC_PEPTIDES) {
 			PreprocessingOutcome outcome = preprocessor.preprocess(peptide);
@@ -273,9 +274,9 @@ class CartographerPrtcParityTest {
 	private static float[][] predictVectors(String[] peptides) {
 		ChronologerPreprocessor preprocessor = new ChronologerPreprocessor(
 				PreprocessingMetadataLoader.loadFromClasspath(
-						ChronologerLibraryOptions.DEFAULT_CARTOGRAPHER_PREPROCESSING_RESOURCE));
+						ChronologerOptions.DEFAULT_CARTOGRAPHER_PREPROCESSING_RESOURCE));
 		try (CartographerBatchPredictor predictor = new CartographerBatchPredictor(
-				ChronologerLibraryOptions.DEFAULT_CARTOGRAPHER_MODEL_RESOURCE)) {
+				ChronologerOptions.DEFAULT_CARTOGRAPHER_MODEL_RESOURCE)) {
 			long[][] tokenBatch = new long[peptides.length][];
 			float[][] chargeBatch = new float[peptides.length][6];
 			float[][] nceBatch = new float[peptides.length][1];
@@ -295,9 +296,9 @@ class CartographerPrtcParityTest {
 	private static float[][] predictChargeDistributions(String[] peptides) {
 		ChronologerPreprocessor preprocessor = new ChronologerPreprocessor(
 				PreprocessingMetadataLoader.loadFromClasspath(
-						ChronologerLibraryOptions.DEFAULT_ELECTRICIAN_PREPROCESSING_RESOURCE));
+						ChronologerOptions.DEFAULT_ELECTRICIAN_PREPROCESSING_RESOURCE));
 		try (ElectricianBatchPredictor predictor = new ElectricianBatchPredictor(
-				ChronologerLibraryOptions.DEFAULT_ELECTRICIAN_MODEL_RESOURCE)) {
+				ChronologerOptions.DEFAULT_ELECTRICIAN_MODEL_RESOURCE)) {
 			long[][] tokenBatch = new long[peptides.length][];
 			for (int i = 0; i < peptides.length; i++) {
 				PreprocessingOutcome outcome = preprocessor.preprocess(peptides[i]);
