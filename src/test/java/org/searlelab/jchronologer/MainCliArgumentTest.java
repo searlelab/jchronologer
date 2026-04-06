@@ -4,13 +4,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
-import org.searlelab.jchronologer.util.TsvTable;
 
 class MainCliArgumentTest {
 
@@ -19,120 +17,129 @@ class MainCliArgumentTest {
         RunResult result = runMain("--help");
         assertEquals(0, result.code);
         assertTrue(result.stdout.contains("Usage: jchronologer"));
-    }
-
-    @Test
-    void helpShortOptionReturnsZeroAndPrintsUsage() {
-        RunResult result = runMain("-h");
-        assertEquals(0, result.code);
-        assertTrue(result.stdout.contains("Predict RTs using Chronologer."));
+        assertTrue(result.stdout.contains("<proteins.fasta> <output.dlib>"));
     }
 
     @Test
     void noArgsReturnsErrorCodeAndUsageOnStderr() {
         RunResult result = runMain();
         assertEquals(2, result.code);
-        assertTrue(result.stderr.contains("Missing required input file."));
-        assertTrue(result.stderr.contains("Usage: jchronologer"));
+        assertTrue(result.stderr.contains("Missing required input peptide file."));
     }
 
     @Test
-    void unknownOptionReturnsErrorCodeAndUsageOnStderr() {
-        RunResult result = runMain("--unknown");
+    void missingFastaOrOutputReturnsError() throws Exception {
+        Path input = Files.createTempFile("main-cli-input", ".txt");
+        Files.writeString(input, "VATVSLPR\n", StandardCharsets.UTF_8);
+
+        RunResult result = runMain(input.toString());
         assertEquals(2, result.code);
-        assertTrue(result.stderr.contains("Unknown option: --unknown"));
+        assertTrue(result.stderr.contains("Expected input peptides, FASTA, and output DLIB."));
     }
 
     @Test
-    void tooManyPositionalArgumentsReturnsError() {
-        RunResult result = runMain("a.tsv", "b.tsv", "c.tsv");
+    void tooManyPositionalArgumentsReturnsError() throws Exception {
+        Path input = Files.createTempFile("main-cli-input", ".txt");
+        Path fasta = Files.createTempFile("main-cli-fasta", ".fasta");
+        Files.writeString(input, "VATVSLPR\n", StandardCharsets.UTF_8);
+        Files.writeString(fasta, ">P1\nVATVSLPR\n", StandardCharsets.UTF_8);
+
+        RunResult result = runMain(input.toString(), fasta.toString(), "a.dlib", "b.dlib");
         assertEquals(2, result.code);
         assertTrue(result.stderr.contains("Too many positional arguments."));
     }
 
     @Test
-    void missingBatchSizeValueReturnsError() {
-        RunResult result = runMain("input.tsv", "--batch_size");
+    void invalidMinimumChargeProbabilityReturnsError() throws Exception {
+        Path input = Files.createTempFile("main-cli-input", ".txt");
+        Path fasta = Files.createTempFile("main-cli-fasta", ".fasta");
+        Files.writeString(input, "VATVSLPR\n", StandardCharsets.UTF_8);
+        Files.writeString(fasta, ">P1\nVATVSLPR\n", StandardCharsets.UTF_8);
+
+        RunResult result = runMain(
+                input.toString(),
+                fasta.toString(),
+                "out.dlib",
+                "--min_charge_probability",
+                "1.1");
         assertEquals(2, result.code);
-        assertTrue(result.stderr.contains("Missing value for option: --batch_size"));
+        assertTrue(result.stderr.contains("Minimum charge probability must be a finite number in the range 0.0-1.0."));
     }
 
     @Test
-    void missingPeptideColumnValueReturnsError() {
-        RunResult result = runMain("input.tsv", "--peptide_column");
+    void invalidNceReturnsError() throws Exception {
+        Path input = Files.createTempFile("main-cli-input", ".txt");
+        Path fasta = Files.createTempFile("main-cli-fasta", ".fasta");
+        Files.writeString(input, "VATVSLPR\n", StandardCharsets.UTF_8);
+        Files.writeString(fasta, ">P1\nVATVSLPR\n", StandardCharsets.UTF_8);
+
+        RunResult result = runMain(
+                input.toString(),
+                fasta.toString(),
+                "out.dlib",
+                "--nce",
+                "9.0");
         assertEquals(2, result.code);
-        assertTrue(result.stderr.contains("Missing value for option: --peptide_column"));
+        assertTrue(result.stderr.contains("NCE must be a finite number in the range 10-60."));
     }
 
     @Test
-    void invalidBatchSizeReturnsError() {
-        RunResult result = runMain("input.tsv", "--batch_size", "0");
+    void invalidBatchSizeReturnsError() throws Exception {
+        Path input = Files.createTempFile("main-cli-input", ".txt");
+        Path fasta = Files.createTempFile("main-cli-fasta", ".fasta");
+        Files.writeString(input, "VATVSLPR\n", StandardCharsets.UTF_8);
+        Files.writeString(fasta, ">P1\nVATVSLPR\n", StandardCharsets.UTF_8);
+
+        RunResult result = runMain(
+                input.toString(),
+                fasta.toString(),
+                "out.dlib",
+                "--batch_size",
+                "0");
         assertEquals(2, result.code);
         assertTrue(result.stderr.contains("Batch size must be positive."));
     }
 
     @Test
-    void nonNumericBatchSizeReturnsError() {
-        RunResult result = runMain("input.tsv", "--batch_size", "abc");
-        assertEquals(2, result.code);
-        assertTrue(result.stderr.contains("Invalid integer value for option: --batch_size"));
-    }
+    void emptyInputFileReturnsPredictionFailure() throws Exception {
+        Path input = Files.createTempFile("main-cli-empty", ".txt");
+        Path fasta = Files.createTempFile("main-cli-fasta", ".fasta");
+        Files.writeString(fasta, ">P1\nVATVSLPR\n", StandardCharsets.UTF_8);
 
-    @Test
-    void optionTokenAsBatchSizeValueReturnsMissingValueError() {
-        RunResult result = runMain("input.tsv", "--batch_size", "--peptide_column", "Seq");
-        assertEquals(2, result.code);
-        assertTrue(result.stderr.contains("Missing value for option: --batch_size"));
-    }
-
-    @Test
-    void emptyInputFileReturnsPredictionFailure() throws IOException {
-        Path input = Files.createTempFile("jchronologer-main-empty", ".txt");
-        RunResult result = runMain(input.toString());
+        RunResult result = runMain(input.toString(), fasta.toString(), "out.dlib");
         assertEquals(1, result.code);
-        assertTrue(result.stderr.contains("Prediction failed: Input file is empty"));
+        assertTrue(result.stderr.contains("DLIB generation failed: Input file is empty"));
     }
 
     @Test
-    void missingPeptideColumnInTsvReturnsPredictionFailure() throws IOException {
-        Path input = Files.createTempFile("jchronologer-main-no-col", ".tsv");
+    void missingPeptideColumnInTsvReturnsPredictionFailure() throws Exception {
+        Path input = Files.createTempFile("main-cli-input", ".tsv");
+        Path fasta = Files.createTempFile("main-cli-fasta", ".fasta");
         Files.writeString(input, "Other\tId\nVATVSLPR\t1\n", StandardCharsets.UTF_8);
-        Path output = Files.createTempFile("jchronologer-main-out", ".tsv");
-        RunResult result = runMain(input.toString(), output.toString());
+        Files.writeString(fasta, ">P1\nVATVSLPR\n", StandardCharsets.UTF_8);
+
+        RunResult result = runMain(input.toString(), fasta.toString(), "out.dlib");
         assertEquals(1, result.code);
         assertTrue(result.stderr.contains("Input TSV is missing peptide column: PeptideModSeq"));
     }
 
     @Test
-    void customPeptideColumnInTsvIsSupported() throws IOException {
-        Path input = Files.createTempFile("jchronologer-main-custom-col", ".tsv");
-        Files.writeString(
-                input,
-                "Seq\tId\nVATVSLPR\t1\n[42.010565]ACDEFGHIK\t2\n",
-                StandardCharsets.UTF_8);
-        Path output = Files.createTempFile("jchronologer-main-custom-col-out", ".tsv");
+    void malformedFastaReturnsPredictionFailure() throws Exception {
+        Path input = Files.createTempFile("main-cli-input", ".txt");
+        Path fasta = Files.createTempFile("main-cli-fasta", ".fasta");
+        Files.writeString(input, "VATVSLPR\n", StandardCharsets.UTF_8);
+        Files.writeString(fasta, "VATVSLPR\n", StandardCharsets.UTF_8);
 
-        RunResult result = runMain(input.toString(), output.toString(), "--peptide_column", "Seq");
-        assertEquals(0, result.code);
-
-        TsvTable table = TsvTable.read(output);
-        assertEquals(3, table.getHeaders().size());
-        assertEquals("Pred_HI", table.getHeaders().get(2));
-        assertEquals(2, table.getRows().size());
-        assertEquals("VATVSLPR", table.getRows().get(0)[0]);
+        RunResult result = runMain(input.toString(), fasta.toString(), "out.dlib");
+        assertEquals(1, result.code);
+        assertTrue(result.stderr.contains("DLIB generation failed: Malformed FASTA"));
     }
 
     @Test
-    void verboseFlagIsAccepted() throws IOException {
-        Path input = Files.createTempFile("jchronologer-main-verbose", ".txt");
-        Files.writeString(
-                input,
-                "VATVSLPR\n[42.010565]ACDEFGHIK\n",
-                StandardCharsets.UTF_8);
-        Path output = Files.createTempFile("jchronologer-main-verbose-out", ".tsv");
-
-        RunResult result = runMain(input.toString(), output.toString(), "--verbose");
-        assertEquals(0, result.code);
+    void missingInputFileReturnsError() {
+        RunResult result = runMain("missing.txt", "missing.fasta", "out.dlib");
+        assertEquals(2, result.code);
+        assertTrue(result.stderr.contains("Input peptide file does not exist"));
     }
 
     private static RunResult runMain(String... args) {

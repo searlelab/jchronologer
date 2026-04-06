@@ -224,6 +224,7 @@ class ApiModelTest {
         assertArrayEquals(new float[] {0.2f, 0.8f}, entry.getIntensityArray());
         assertArrayEquals(new String[] {"1+y1", "1+b1"}, entry.getIonTypeArray());
         assertTrue(entry.getCCS().isEmpty());
+        assertTrue(entry.getChargeProbability().isEmpty());
         assertEquals("[+42.010565]AK[+229.162932]", entry.getPeptideModSeq());
 
         ChronologerLibraryEntry entryWithCCS = new ChronologerLibraryEntry(
@@ -235,8 +236,10 @@ class ApiModelTest {
                 new double[] {100.0},
                 new float[] {0.5f},
                 new String[] {"1+y1"},
-                Optional.of(0.123f));
+                Optional.of(0.123f),
+                Optional.of(0.75f));
         assertEquals(Optional.of(0.123f), entryWithCCS.getCCS());
+        assertEquals(Optional.of(0.75f), entryWithCCS.getChargeProbability());
     }
 
     @Test

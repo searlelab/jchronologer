@@ -1,66 +1,148 @@
 package org.searlelab.jchronologer;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
 import org.junit.jupiter.api.Test;
-import org.searlelab.jchronologer.util.TsvTable;
+import org.searlelab.jchronologer.api.ChronologerLibraryEntry;
+import org.searlelab.jchronologer.api.ChronologerLibraryPredictor;
+import org.searlelab.jchronologer.api.LibraryPredictionRequest;
+import org.searlelab.jchronologer.dlib.DlibCodec;
+import org.searlelab.jchronologer.impl.ChronologerFactory;
 
 class MainIntegrationTest {
 
     @Test
-    void plainTextInputWritesPredictionsToStdoutWhenOutputIsOmitted() throws IOException {
+    void plainTextInputWritesDlibWithEntriesMetadataAndProteinMappings() throws Exception {
         Path input = Files.createTempFile("jchronologer-main-plain", ".txt");
+        Path fasta = Files.createTempFile("jchronologer-main-proteins", ".fasta");
+        Path output = Files.createTempFile("jchronologer-main", ".dlib");
+        Files.writeString(input, "VATVSLPR\nTASEFDSAIAQDK\nNOPEPTIDE\n", StandardCharsets.UTF_8);
         Files.writeString(
-                input,
-                "VATVSLPR\n[42.010565]ACDEFGHIK\n",
+                fasta,
+                ">sp|P1|protein1\nMAVATVSLPRGKTASEFDSAIAQDKL\n>sp|P2|protein2\nPEPTIDER\n",
                 StandardCharsets.UTF_8);
 
+        RunResult result = runMain(input.toString(), fasta.toString(), output.toString(), "--batch_size", "2");
+
+        assertEquals(0, result.code);
+        assertTrue(result.stderr.contains("Dropped 1 peptides for invalid input."));
+        try (Connection connection = DriverManager.getConnection("jdbc:sqlite:" + output.toAbsolutePath());
+                Statement statement = connection.createStatement()) {
+            ResultSet entryCount = statement.executeQuery("select count(*) from entries");
+            assertTrue(entryCount.next());
+            assertTrue(entryCount.getInt(1) > 0);
+
+            ResultSet metadataCount = statement.executeQuery("select count(*) from metadata");
+            assertTrue(metadataCount.next());
+            assertEquals(4, metadataCount.getInt(1));
+
+            ResultSet proteinCount = statement.executeQuery("select count(*) from peptidetoprotein");
+            assertTrue(proteinCount.next());
+            assertTrue(proteinCount.getInt(1) >= 2);
+        }
+    }
+
+    @Test
+    void tsvInputSupportsCustomPeptideColumnAndPersistsScoreFromChargeProbability() throws Exception {
+        Path input = Files.createTempFile("jchronologer-main-tsv", ".tsv");
+        Path fasta = Files.createTempFile("jchronologer-main-fasta", ".fasta");
+        Path output = Files.createTempFile("jchronologer-main-out", ".dlib");
+        Files.writeString(input, "Seq\tId\nTASEFDSAIAQDK\t1\n", StandardCharsets.UTF_8);
+        Files.writeString(fasta, ">P1\nMTASEFDSAIAQDKAA\n", StandardCharsets.UTF_8);
+
+        RunResult result = runMain(
+                input.toString(),
+                fasta.toString(),
+                output.toString(),
+                "--peptide_column",
+                "Seq");
+        assertEquals(0, result.code);
+
+        try (ChronologerLibraryPredictor predictor = ChronologerFactory.createLibraryPredictorDefault();
+                Connection connection = DriverManager.getConnection("jdbc:sqlite:" + output.toAbsolutePath());
+                Statement statement = connection.createStatement()) {
+            List<ChronologerLibraryEntry> expected = predictor.predict(List.of(
+                    new LibraryPredictionRequest("[]-TASEFDSAIAQDK-[]", 33.0, 0.01)));
+            ChronologerLibraryEntry firstExpected = expected.get(0);
+
+            ResultSet rs = statement.executeQuery(
+                    "select Score, MassEncodedLength, MassArray, IntensityEncodedLength, IntensityArray "
+                            + "from entries order by PrecursorCharge limit 1");
+            assertTrue(rs.next());
+            float observedScore = rs.getFloat(1);
+            assertEquals(1.0f - firstExpected.getChargeProbability().orElseThrow(), observedScore, 1e-5f);
+
+            byte[] massBlob = DlibCodec.decompress(rs.getBytes(3));
+            byte[] intensityBlob = DlibCodec.decompress(rs.getBytes(5));
+            assertEquals(rs.getInt(2), massBlob.length);
+            assertEquals(rs.getInt(4), intensityBlob.length);
+            assertArrayEquals(firstExpected.getMassArray(), DlibCodec.decodeDoubles(massBlob), 1e-9);
+            assertArrayEquals(firstExpected.getIntensityArray(), DlibCodec.decodeFloats(intensityBlob), 1e-6f);
+        }
+    }
+
+    @Test
+    void entriesWithoutProteinMatchesAreDropped() throws Exception {
+        Path input = Files.createTempFile("jchronologer-main-drop", ".txt");
+        Path fasta = Files.createTempFile("jchronologer-main-drop", ".fasta");
+        Path output = Files.createTempFile("jchronologer-main-drop", ".dlib");
+        Files.writeString(input, "VATVSLPR\nTASEFDSAIAQDK\n", StandardCharsets.UTF_8);
+        Files.writeString(fasta, ">P1\nVATVSLPR\n", StandardCharsets.UTF_8);
+
+        RunResult result = runMain(input.toString(), fasta.toString(), output.toString());
+        assertEquals(0, result.code);
+        assertTrue(result.stderr.contains("Dropped 1 peptides and"));
+
+        try (Connection connection = DriverManager.getConnection("jdbc:sqlite:" + output.toAbsolutePath());
+                Statement statement = connection.createStatement()) {
+            ResultSet rs = statement.executeQuery("select distinct PeptideSeq from entries order by PeptideSeq");
+            List<String> peptideSeqs = new ArrayList<>();
+            while (rs.next()) {
+                peptideSeqs.add(rs.getString(1));
+            }
+            assertEquals(List.of("VATVSLPR"), peptideSeqs);
+        }
+    }
+
+    @Test
+    void noEntriesWrittenDeletesOutputFileAndReturnsFailure() throws Exception {
+        Path input = Files.createTempFile("jchronologer-main-no-entries", ".txt");
+        Path fasta = Files.createTempFile("jchronologer-main-no-entries", ".fasta");
+        Path output = Files.createTempFile("jchronologer-main-no-entries", ".dlib");
+        Files.writeString(input, "SHORT\n", StandardCharsets.UTF_8);
+        Files.writeString(fasta, ">P1\nSHORT\n", StandardCharsets.UTF_8);
+
+        RunResult result = runMain(input.toString(), fasta.toString(), output.toString());
+        assertEquals(1, result.code);
+        assertTrue(result.stderr.contains("No library entries were written."));
+        assertEquals(false, Files.exists(output));
+    }
+
+    private static RunResult runMain(String... args) {
         ByteArrayOutputStream stdoutBytes = new ByteArrayOutputStream();
         ByteArrayOutputStream stderrBytes = new ByteArrayOutputStream();
         PrintStream stdout = new PrintStream(stdoutBytes, true, StandardCharsets.UTF_8);
         PrintStream stderr = new PrintStream(stderrBytes, true, StandardCharsets.UTF_8);
-
-        int code = Main.run(new String[] {input.toString()}, stdout, stderr);
-
-        assertEquals(0, code);
-        String output = stdoutBytes.toString(StandardCharsets.UTF_8);
-        String[] lines = output.split("\\R");
-        assertEquals("PeptideModSeq\tPred_HI", lines[0]);
-        assertEquals(3, lines.length);
-        assertTrue(lines[1].startsWith("VATVSLPR\t"));
-        assertTrue(output.contains("[42.010565]ACDEFGHIK"));
+        int code = Main.run(args, stdout, stderr);
+        return new RunResult(
+                code,
+                stdoutBytes.toString(StandardCharsets.UTF_8),
+                stderrBytes.toString(StandardCharsets.UTF_8));
     }
 
-    @Test
-    void tsvInputWritesPredictionsToOutputFileAndDropsRejectedRows() throws IOException {
-        Path input = copyResourceToTemp("data/golden/parity_cases.tsv", "-input.tsv");
-        Path output = Files.createTempFile("jchronologer-main-tsv", ".tsv");
-
-        int code = Main.run(new String[] {input.toString(), output.toString()}, System.out, System.err);
-
-        assertEquals(0, code);
-        TsvTable table = TsvTable.read(output);
-        assertTrue(table.getHeaders().contains("Pred_HI"));
-        assertEquals(21, table.getRows().size());
-    }
-
-    private static Path copyResourceToTemp(String resource, String suffix) throws IOException {
-        try (InputStream stream = Thread.currentThread().getContextClassLoader().getResourceAsStream(resource)) {
-            if (stream == null) {
-                throw new IllegalStateException("Missing resource: " + resource);
-            }
-            Path tempFile = Files.createTempFile("jchronologer-main", suffix);
-            Files.copy(stream, tempFile, StandardCopyOption.REPLACE_EXISTING);
-            return tempFile;
-        }
+    private record RunResult(int code, String stdout, String stderr) {
     }
 }

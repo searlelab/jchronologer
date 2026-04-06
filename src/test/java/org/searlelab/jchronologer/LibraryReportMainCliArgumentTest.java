@@ -18,6 +18,13 @@ class LibraryReportMainCliArgumentTest {
     }
 
     @Test
+    void helpShortOptionReturnsZeroAndPrintsUsage() {
+        RunResult result = runMain("-h");
+        assertEquals(0, result.code);
+        assertTrue(result.stdout.contains("Generate a quick console report"));
+    }
+
+    @Test
     void unknownOptionReturnsErrorCodeAndUsageOnStderr() {
         RunResult result = runMain("--unknown");
         assertEquals(2, result.code);
@@ -47,6 +54,13 @@ class LibraryReportMainCliArgumentTest {
     }
 
     @Test
+    void invalidMinimumChargeProbabilityValueReturnsErrorCode() {
+        RunResult result = runMain("--minimum_charge_probability", "abc");
+        assertEquals(2, result.code);
+        assertTrue(result.stderr.contains("Invalid numeric value for option: --minimum_charge_probability"));
+    }
+
+    @Test
     void strictUnimodValidationProducesErrorRow() {
         RunResult result = runMain("TASEFDSAIAQDK");
         assertEquals(0, result.code);
@@ -60,6 +74,7 @@ class LibraryReportMainCliArgumentTest {
         assertEquals("y4", LibraryReportMain.formatIonTypeForDisplay("1+y4"));
         assertEquals("y4++", LibraryReportMain.formatIonTypeForDisplay("2+y4"));
         assertEquals("b6+++", LibraryReportMain.formatIonTypeForDisplay("3+b6"));
+        assertEquals("precursor", LibraryReportMain.formatIonTypeForDisplay("precursor"));
     }
 
     private static RunResult runMain(String... args) {

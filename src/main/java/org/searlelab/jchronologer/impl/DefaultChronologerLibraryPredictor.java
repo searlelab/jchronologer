@@ -288,7 +288,8 @@ public final class DefaultChronologerLibraryPredictor implements ChronologerLibr
                                 tokens,
                                 (byte) charge,
                                 normalizedRequest.precursorNce,
-                                predHi * 60.0f));
+                                predHi * 60.0f,
+                                Optional.of(distribution[chargeIndex])));
                     }
                 }
             } else {
@@ -299,7 +300,8 @@ public final class DefaultChronologerLibraryPredictor implements ChronologerLibr
                             tokens,
                             condition.getPrecursorCharge(),
                             condition.getPrecursorNce(),
-                            predHi * 60.0f));
+                            predHi * 60.0f,
+                            Optional.empty()));
                 }
             }
         }
@@ -383,7 +385,8 @@ public final class DefaultChronologerLibraryPredictor implements ChronologerLibr
                         decoded.getMassArray(),
                         decoded.getIntensityArray(),
                         decoded.getIonTypeArray(),
-                        ccs));
+                        ccs,
+                        job.chargeProbability));
             }
         }
         long decodeNanos = System.nanoTime() - decodeStartNanos;
@@ -808,6 +811,7 @@ public final class DefaultChronologerLibraryPredictor implements ChronologerLibr
         private final byte charge;
         private final double nce;
         private final float retentionTimeSeconds;
+        private final Optional<Float> chargeProbability;
 
         private PredictionJob(
                 String unimodPeptide,
@@ -815,13 +819,15 @@ public final class DefaultChronologerLibraryPredictor implements ChronologerLibr
                 long[] tokenArray,
                 byte charge,
                 double nce,
-                float retentionTimeSeconds) {
+                float retentionTimeSeconds,
+                Optional<Float> chargeProbability) {
             this.unimodPeptide = unimodPeptide;
             this.parsedPeptide = parsedPeptide;
             this.tokenArray = tokenArray;
             this.charge = charge;
             this.nce = nce;
             this.retentionTimeSeconds = retentionTimeSeconds;
+            this.chargeProbability = chargeProbability;
         }
     }
 

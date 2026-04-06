@@ -19,6 +19,7 @@ public final class ChronologerLibraryEntry {
     private final float[] intensityArray;
     private final String[] ionTypeArray;
     private final Optional<Float> ccs;
+    private final Optional<Float> chargeProbability;
 
     public ChronologerLibraryEntry(
             String unimodPeptideSequence,
@@ -38,6 +39,7 @@ public final class ChronologerLibraryEntry {
                 massArray,
                 intensityArray,
                 ionTypeArray,
+                Optional.empty(),
                 Optional.empty());
     }
 
@@ -51,6 +53,30 @@ public final class ChronologerLibraryEntry {
             float[] intensityArray,
             String[] ionTypeArray,
             Optional<Float> ccs) {
+        this(
+                unimodPeptideSequence,
+                precursorCharge,
+                precursorNce,
+                precursorMz,
+                retentionTimeInSeconds,
+                massArray,
+                intensityArray,
+                ionTypeArray,
+                ccs,
+                Optional.empty());
+    }
+
+    public ChronologerLibraryEntry(
+            String unimodPeptideSequence,
+            byte precursorCharge,
+            double precursorNce,
+            double precursorMz,
+            float retentionTimeInSeconds,
+            double[] massArray,
+            float[] intensityArray,
+            String[] ionTypeArray,
+            Optional<Float> ccs,
+            Optional<Float> chargeProbability) {
         this.unimodPeptideSequence = unimodPeptideSequence;
         this.precursorCharge = precursorCharge;
         this.precursorNce = precursorNce;
@@ -60,6 +86,7 @@ public final class ChronologerLibraryEntry {
         this.intensityArray = Arrays.copyOf(intensityArray, intensityArray.length);
         this.ionTypeArray = Arrays.copyOf(ionTypeArray, ionTypeArray.length);
         this.ccs = ccs == null ? Optional.empty() : ccs;
+        this.chargeProbability = chargeProbability == null ? Optional.empty() : chargeProbability;
     }
 
     public String getUnimodPeptideSequence() {
@@ -96,6 +123,10 @@ public final class ChronologerLibraryEntry {
 
     public Optional<Float> getCCS() {
         return ccs;
+    }
+
+    public Optional<Float> getChargeProbability() {
+        return chargeProbability;
     }
 
     /**
