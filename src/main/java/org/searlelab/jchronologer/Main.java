@@ -387,7 +387,6 @@ public final class Main {
         stream.println("Options:");
         stream.println("  --nce <value>                           Precursor NCE (default: 33.0)");
         stream.println("  --min_charge_probability <value>        Minimum charge probability (default: 0.01)");
-        stream.println("  --min-charge-probability <value>        Alias for --min_charge_probability");
         stream.println("  --batch_size <n>                        Shared prediction/write batch size (default: 2048)");
         stream.println("  --peptide_column <name>                 Peptide column for TSV input (default: " + DEFAULT_PEPTIDE_COLUMN + ")");
         stream.println("  --verbose                               Enable detailed predictor diagnostics");

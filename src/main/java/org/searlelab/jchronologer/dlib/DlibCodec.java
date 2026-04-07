@@ -16,7 +16,7 @@ public final class DlibCodec {
     }
 
     public static byte[] encode(double[] values) {
-        ByteBuffer buffer = ByteBuffer.allocate(values.length * Double.BYTES).order(ByteOrder.LITTLE_ENDIAN);
+        ByteBuffer buffer = ByteBuffer.allocate(values.length * Double.BYTES).order(ByteOrder.BIG_ENDIAN);
         for (double value : values) {
             buffer.putDouble(value);
         }
@@ -24,7 +24,7 @@ public final class DlibCodec {
     }
 
     public static byte[] encode(float[] values) {
-        ByteBuffer buffer = ByteBuffer.allocate(values.length * Float.BYTES).order(ByteOrder.LITTLE_ENDIAN);
+        ByteBuffer buffer = ByteBuffer.allocate(values.length * Float.BYTES).order(ByteOrder.BIG_ENDIAN);
         for (float value : values) {
             buffer.putFloat(value);
         }
@@ -72,7 +72,7 @@ public final class DlibCodec {
     }
 
     public static double[] decodeDoubles(byte[] bytes) {
-        ByteBuffer buffer = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN);
+        ByteBuffer buffer = ByteBuffer.wrap(bytes).order(ByteOrder.BIG_ENDIAN);
         double[] values = new double[bytes.length / Double.BYTES];
         for (int i = 0; i < values.length; i++) {
             values[i] = buffer.getDouble();
@@ -81,7 +81,7 @@ public final class DlibCodec {
     }
 
     public static float[] decodeFloats(byte[] bytes) {
-        ByteBuffer buffer = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN);
+        ByteBuffer buffer = ByteBuffer.wrap(bytes).order(ByteOrder.BIG_ENDIAN);
         float[] values = new float[bytes.length / Float.BYTES];
         for (int i = 0; i < values.length; i++) {
             values[i] = buffer.getFloat();

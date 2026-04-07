@@ -2,6 +2,7 @@ package org.searlelab.jchronologer;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayOutputStream;
@@ -53,6 +54,43 @@ class MainIntegrationTest {
             assertTrue(proteinCount.next());
             assertTrue(proteinCount.getInt(1) >= 2);
         }
+    }
+
+    @Test
+    void generatedLibraryRoundTripsThroughCalibrationReader() throws Exception {
+        Path input = Files.createTempFile("jchronologer-main-roundtrip", ".txt");
+        Path fasta = Files.createTempFile("jchronologer-main-roundtrip", ".fasta");
+        Path output = Files.createTempFile("jchronologer-main-roundtrip", ".dlib");
+        Files.writeString(input, "VATVSLPR\n", StandardCharsets.UTF_8);
+        Files.writeString(fasta, ">P1\nMAVATVSLPRGK\n", StandardCharsets.UTF_8);
+
+        RunResult result = runMain(input.toString(), fasta.toString(), output.toString());
+
+        assertEquals(0, result.code);
+        List<CalibrateNceMain.CalibrationRow> rows = CalibrateNceMain.readCalibrationRows(output, 100.0);
+        assertFalse(rows.isEmpty());
+
+        CalibrateNceMain.CalibrationRow vatvslpr = rows.stream()
+                .filter(row -> "[]-VATVSLPR-[]".equals(row.unimodPeptideSequence()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals(2, vatvslpr.precursorCharge());
+        assertTrue(vatvslpr.observedMasses().length > 0);
+        assertEquals(vatvslpr.observedMasses().length, vatvslpr.observedIntensities().length);
+        for (double mass : vatvslpr.observedMasses()) {
+            assertTrue(Double.isFinite(mass));
+            assertTrue(mass > 0.0);
+            assertTrue(mass < 4000.0);
+        }
+        boolean hasPositiveIntensity = false;
+        for (float intensity : vatvslpr.observedIntensities()) {
+            assertTrue(Float.isFinite(intensity));
+            assertTrue(intensity >= 0.0f);
+            if (intensity > 0.0f) {
+                hasPositiveIntensity = true;
+            }
+        }
+        assertTrue(hasPositiveIntensity);
     }
 
     @Test
