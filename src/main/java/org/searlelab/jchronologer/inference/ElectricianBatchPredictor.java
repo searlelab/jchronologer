@@ -29,8 +29,8 @@ public final class ElectricianBatchPredictor implements AutoCloseable {
     public ElectricianBatchPredictor(String modelResource) {
         Path modelPath = ResourceUtils.copyClasspathResourceToTempFile(modelResource, ".torchscript.pt");
         try {
-            this.model = Model.newInstance("electrician", "PyTorch");
-            this.model.load(modelPath.getParent(), modelPath.getFileName().toString());
+            TorchModelLoader.LoadedModel loadedModel = new TorchModelLoader().load("Electrician", modelPath);
+            this.model = loadedModel.model();
 
             this.predictors = ConcurrentHashMap.newKeySet();
             this.threadLocalPredictor = ThreadLocal.withInitial(() -> {
