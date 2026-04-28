@@ -18,6 +18,9 @@ public final class ChronologerOptions {
 	public static final String DEFAULT_CARTOGRAPHER_MODEL_RESOURCE="models/Cartographer_multistart_best_run01.torchscript.pt";
 	public static final String DEFAULT_CARTOGRAPHER_PREPROCESSING_RESOURCE="models/Cartographer_multistart_best_run01.preprocessing.json";
 
+	public static final String DEFAULT_SCOUT_MODEL_RESOURCE="models/Scout_20260427110352_run01.torchscript.pt";
+	public static final String DEFAULT_SCOUT_PREPROCESSING_RESOURCE="models/Scout_20260427110352_run01.preprocessing.json";
+
 	public static final String DEFAULT_ELECTRICIAN_MODEL_RESOURCE="models/Electrician_20260225110528.torchscript.pt";
 	public static final String DEFAULT_ELECTRICIAN_PREPROCESSING_RESOURCE="models/Electrician_20260225110528.preprocessing.json";
     

@@ -16,6 +16,8 @@ public final class ChronologerLibraryOptions {
     private final String electricianPreprocessingResource;
     private final String sculptorModelResource;
     private final String sculptorPreprocessingResource;
+    private final String scoutModelResource;
+    private final String scoutPreprocessingResource;
     private final boolean ccsPredictionEnabled;
     private final int batchSize;
     private final int cartographerBatchSize;
@@ -33,6 +35,8 @@ public final class ChronologerLibraryOptions {
         this.electricianPreprocessingResource = builder.electricianPreprocessingResource;
         this.sculptorModelResource = builder.sculptorModelResource;
         this.sculptorPreprocessingResource = builder.sculptorPreprocessingResource;
+        this.scoutModelResource = builder.scoutModelResource;
+        this.scoutPreprocessingResource = builder.scoutPreprocessingResource;
         this.ccsPredictionEnabled = builder.ccsPredictionEnabled;
         this.batchSize = builder.batchSize;
         this.cartographerBatchSize = builder.cartographerBatchSize;
@@ -78,6 +82,14 @@ public final class ChronologerLibraryOptions {
         return sculptorPreprocessingResource;
     }
 
+    public String getScoutModelResource() {
+        return scoutModelResource;
+    }
+
+    public String getScoutPreprocessingResource() {
+        return scoutPreprocessingResource;
+    }
+
     public boolean isCCSPredictionEnabled() {
         return ccsPredictionEnabled;
     }
@@ -115,6 +127,8 @@ public final class ChronologerLibraryOptions {
         private String electricianPreprocessingResource = ChronologerOptions.DEFAULT_ELECTRICIAN_PREPROCESSING_RESOURCE;
         private String sculptorModelResource = ChronologerOptions.DEFAULT_SCULPTOR_MODEL_RESOURCE;
         private String sculptorPreprocessingResource = ChronologerOptions.DEFAULT_SCULPTOR_PREPROCESSING_RESOURCE;
+        private String scoutModelResource = ChronologerOptions.DEFAULT_SCOUT_MODEL_RESOURCE;
+        private String scoutPreprocessingResource = ChronologerOptions.DEFAULT_SCOUT_PREPROCESSING_RESOURCE;
         private boolean ccsPredictionEnabled = ChronologerOptions.DEFAULT_CCS_PREDICTION_ENABLED;
         private int batchSize = ChronologerOptions.DEFAULT_BATCH_SIZE;
         private int cartographerBatchSize = ChronologerOptions.DEFAULT_BATCH_SIZE;
@@ -163,6 +177,16 @@ public final class ChronologerLibraryOptions {
 
         public Builder sculptorPreprocessingResource(String sculptorPreprocessingResource) {
             this.sculptorPreprocessingResource = sculptorPreprocessingResource;
+            return this;
+        }
+
+        public Builder scoutModelResource(String scoutModelResource) {
+            this.scoutModelResource = scoutModelResource;
+            return this;
+        }
+
+        public Builder scoutPreprocessingResource(String scoutPreprocessingResource) {
+            this.scoutPreprocessingResource = scoutPreprocessingResource;
             return this;
         }
 
@@ -225,6 +249,12 @@ public final class ChronologerLibraryOptions {
             }
             if (sculptorPreprocessingResource == null || sculptorPreprocessingResource.isBlank()) {
                 throw new IllegalArgumentException("Sculptor preprocessing resource must be non-empty.");
+            }
+            if (scoutModelResource == null || scoutModelResource.isBlank()) {
+                throw new IllegalArgumentException("Scout model resource must be non-empty.");
+            }
+            if (scoutPreprocessingResource == null || scoutPreprocessingResource.isBlank()) {
+                throw new IllegalArgumentException("Scout preprocessing resource must be non-empty.");
             }
             if (batchSize <= 0) {
                 throw new IllegalArgumentException("Batch size must be positive.");

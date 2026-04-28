@@ -18,6 +18,7 @@ class MainCliArgumentTest {
         assertEquals(0, result.code);
         assertTrue(result.stdout.contains("Usage: jchronologer"));
         assertTrue(result.stdout.contains("<proteins.fasta> <output.dlib>"));
+        assertTrue(result.stdout.contains("--fast_mode"));
     }
 
     @Test
@@ -98,6 +99,22 @@ class MainCliArgumentTest {
                 "0");
         assertEquals(2, result.code);
         assertTrue(result.stderr.contains("Batch size must be positive."));
+    }
+
+    @Test
+    void fastModeFlagIsAccepted() throws Exception {
+        Path input = Files.createTempFile("main-cli-input", ".txt");
+        Path fasta = Files.createTempFile("main-cli-fasta", ".fasta");
+        Files.writeString(input, "VATVSLPR\n", StandardCharsets.UTF_8);
+        Files.writeString(fasta, ">P1\nVATVSLPR\n", StandardCharsets.UTF_8);
+
+        RunResult result = runMain(
+                input.toString(),
+                fasta.toString(),
+                "out.dlib",
+                "--fast_mode");
+        assertTrue(result.code == 0 || result.code == 1);
+        assertTrue(!result.stderr.contains("Unknown option: --fast_mode"));
     }
 
     @Test

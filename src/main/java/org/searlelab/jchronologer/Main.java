@@ -94,7 +94,9 @@ public final class Main {
 
         Summary summary = new Summary(peptides.size());
         boolean success = false;
-        try (ChronologerLibraryPredictor predictor = ChronologerFactory.createLibraryPredictor(options);
+        try (ChronologerLibraryPredictor predictor = cliArgs.fastMode
+                        ? ChronologerFactory.createFastLibraryPredictor(options)
+                        : ChronologerFactory.createLibraryPredictor(options);
                 DlibDatabase database = new DlibDatabase(cliArgs.output, DlibMetadata.defaults())) {
             for (int start = 0; start < peptides.size(); start += cliArgs.batchSize) {
                 int end = Math.min(start + cliArgs.batchSize, peptides.size());
@@ -279,6 +281,7 @@ public final class Main {
         double nce = DEFAULT_NCE;
         double minimumChargeProbability = DEFAULT_MIN_CHARGE_PROBABILITY;
         boolean verbose = false;
+        boolean fastMode = false;
         boolean help = false;
         List<String> positional = new ArrayList<>();
 
@@ -307,6 +310,9 @@ public final class Main {
                 case "--verbose":
                     verbose = true;
                     break;
+                case "--fast_mode":
+                    fastMode = true;
+                    break;
                 default:
                     if (arg.startsWith("--")) {
                         throw new IllegalArgumentException("Unknown option: " + arg);
@@ -317,7 +323,8 @@ public final class Main {
         }
 
         if (help) {
-            return new CliArgs(null, null, null, peptideColumn, batchSize, nce, minimumChargeProbability, verbose, true);
+            return new CliArgs(
+                    null, null, null, peptideColumn, batchSize, nce, minimumChargeProbability, verbose, fastMode, true);
         }
         if (positional.size() != 3) {
             throw new IllegalArgumentException(
@@ -347,7 +354,8 @@ public final class Main {
         if (!Files.isRegularFile(fasta)) {
             throw new IllegalArgumentException("Protein FASTA file does not exist: " + fasta);
         }
-        return new CliArgs(input, fasta, output, peptideColumn, batchSize, nce, minimumChargeProbability, verbose, false);
+        return new CliArgs(
+                input, fasta, output, peptideColumn, batchSize, nce, minimumChargeProbability, verbose, fastMode, false);
     }
 
     private static String requireValue(String[] args, int index, String flag) {
@@ -389,6 +397,7 @@ public final class Main {
         stream.println("  --min_charge_probability <value>        Minimum charge probability (default: 0.01)");
         stream.println("  --batch_size <n>                        Shared prediction/write batch size (default: 2048)");
         stream.println("  --peptide_column <name>                 Peptide column for TSV input (default: " + DEFAULT_PEPTIDE_COLUMN + ")");
+        stream.println("  --fast_mode                             Use Scout fast predictor instead of Chronologer+Cartographer+Sculptor");
         stream.println("  --verbose                               Enable detailed predictor diagnostics");
         stream.println("  --help, -h                              Show this help");
     }
@@ -402,6 +411,7 @@ public final class Main {
             double nce,
             double minimumChargeProbability,
             boolean verbose,
+            boolean fastMode,
             boolean help) {
     }
 

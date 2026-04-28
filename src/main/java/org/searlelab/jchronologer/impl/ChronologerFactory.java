@@ -43,6 +43,10 @@ public final class ChronologerFactory {
         return new DefaultChronologerLibraryPredictor(ChronologerLibraryOptions.builder().build());
     }
 
+    public static ChronologerLibraryPredictor createFastLibraryPredictorDefault() {
+        return new DefaultScoutLibraryPredictor(ChronologerLibraryOptions.builder().build());
+    }
+
     /**
      * Creates a tandem library predictor with explicit runtime options.
      *
@@ -51,5 +55,9 @@ public final class ChronologerFactory {
      */
     public static ChronologerLibraryPredictor createLibraryPredictor(ChronologerLibraryOptions options) {
         return new DefaultChronologerLibraryPredictor(options);
+    }
+
+    public static ChronologerLibraryPredictor createFastLibraryPredictor(ChronologerLibraryOptions options) {
+        return new DefaultScoutLibraryPredictor(options);
     }
 }

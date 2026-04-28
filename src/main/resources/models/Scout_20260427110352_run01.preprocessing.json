@@ -1,0 +1,292 @@
+{
+  "model_file": "C:\\Users\\searl\\OneDrive\\Documents\\GitHub\\cartographer\\models\\Scout_20260427110352_run01.pt",
+  "model_family": "scout",
+  "padding_index": 0,
+  "residues": [
+    "A",
+    "C",
+    "D",
+    "E",
+    "F",
+    "G",
+    "H",
+    "I",
+    "K",
+    "L",
+    "M",
+    "N",
+    "P",
+    "Q",
+    "R",
+    "S",
+    "T",
+    "V",
+    "W",
+    "Y",
+    "c",
+    "m",
+    "d",
+    "e",
+    "s",
+    "t",
+    "y",
+    "a",
+    "b",
+    "u",
+    "n",
+    "o",
+    "p",
+    "q",
+    "r",
+    "x",
+    "z",
+    "w",
+    "f",
+    "g",
+    "h",
+    "i",
+    "j",
+    "k",
+    "-",
+    "^",
+    "(",
+    ")",
+    "&",
+    "*",
+    "_"
+  ],
+  "aa_to_int": {
+    "&": 49,
+    "(": 47,
+    ")": 48,
+    "*": 50,
+    "-": 45,
+    "A": 1,
+    "C": 2,
+    "D": 3,
+    "E": 4,
+    "F": 5,
+    "G": 6,
+    "H": 7,
+    "I": 8,
+    "K": 9,
+    "L": 10,
+    "M": 11,
+    "N": 12,
+    "P": 13,
+    "Q": 14,
+    "R": 15,
+    "S": 16,
+    "T": 17,
+    "V": 18,
+    "W": 19,
+    "Y": 20,
+    "^": 46,
+    "_": 51,
+    "a": 28,
+    "b": 29,
+    "c": 21,
+    "d": 23,
+    "e": 24,
+    "f": 39,
+    "g": 40,
+    "h": 41,
+    "i": 42,
+    "j": 43,
+    "k": 44,
+    "m": 22,
+    "n": 31,
+    "o": 32,
+    "p": 33,
+    "q": 34,
+    "r": 35,
+    "s": 25,
+    "t": 26,
+    "u": 30,
+    "w": 38,
+    "x": 36,
+    "y": 27,
+    "z": 37
+  },
+  "nterm_unimod_map": {
+    "UNIMOD:1": "^",
+    "UNIMOD:27": ")",
+    "UNIMOD:28": "(",
+    "UNIMOD:737": "*",
+    "UNIMOD:739": "&"
+  },
+  "residue_unimod_map": [
+    {
+      "residue": "C",
+      "unimod": "UNIMOD:4",
+      "token": "c"
+    },
+    {
+      "residue": "K",
+      "unimod": "UNIMOD:1",
+      "token": "a"
+    },
+    {
+      "residue": "K",
+      "unimod": "UNIMOD:121",
+      "token": "u"
+    },
+    {
+      "residue": "K",
+      "unimod": "UNIMOD:34",
+      "token": "n"
+    },
+    {
+      "residue": "K",
+      "unimod": "UNIMOD:36",
+      "token": "o"
+    },
+    {
+      "residue": "K",
+      "unimod": "UNIMOD:37",
+      "token": "p"
+    },
+    {
+      "residue": "K",
+      "unimod": "UNIMOD:64",
+      "token": "b"
+    },
+    {
+      "residue": "K",
+      "unimod": "UNIMOD:737",
+      "token": "x"
+    },
+    {
+      "residue": "K",
+      "unimod": "UNIMOD:739",
+      "token": "z"
+    },
+    {
+      "residue": "M",
+      "unimod": "UNIMOD:35",
+      "token": "m"
+    },
+    {
+      "residue": "N",
+      "unimod": "UNIMOD:43",
+      "token": "h"
+    },
+    {
+      "residue": "N",
+      "unimod": "UNIMOD:7",
+      "token": "f"
+    },
+    {
+      "residue": "Q",
+      "unimod": "UNIMOD:7",
+      "token": "g"
+    },
+    {
+      "residue": "R",
+      "unimod": "UNIMOD:34",
+      "token": "q"
+    },
+    {
+      "residue": "R",
+      "unimod": "UNIMOD:36",
+      "token": "r"
+    },
+    {
+      "residue": "R",
+      "unimod": "UNIMOD:7",
+      "token": "k"
+    },
+    {
+      "residue": "S",
+      "unimod": "UNIMOD:21",
+      "token": "s"
+    },
+    {
+      "residue": "S",
+      "unimod": "UNIMOD:43",
+      "token": "i"
+    },
+    {
+      "residue": "T",
+      "unimod": "UNIMOD:21",
+      "token": "t"
+    },
+    {
+      "residue": "T",
+      "unimod": "UNIMOD:43",
+      "token": "j"
+    },
+    {
+      "residue": "W",
+      "unimod": "UNIMOD:35",
+      "token": "w"
+    },
+    {
+      "residue": "Y",
+      "unimod": "UNIMOD:21",
+      "token": "y"
+    }
+  ],
+  "max_peptide_len": 31,
+  "input_names": [
+    "tokens",
+    "precursor_charge_onehot",
+    "nce"
+  ],
+  "input_shapes": [
+    [
+      "batch",
+      33
+    ],
+    [
+      "batch",
+      6
+    ],
+    [
+      "batch",
+      1
+    ]
+  ],
+  "input_dtypes": [
+    "int64",
+    "float32",
+    "float32"
+  ],
+  "output_names": [
+    "ms2",
+    "irt",
+    "ccs",
+    "charge_dist"
+  ],
+  "output_shapes": [
+    [
+      "batch",
+      116
+    ],
+    [
+      "batch",
+      1
+    ],
+    [
+      "batch",
+      1
+    ],
+    [
+      "batch",
+      6
+    ]
+  ],
+  "output_dtypes": [
+    "float32",
+    "float32",
+    "float32",
+    "float32"
+  ],
+  "scalar_stats": {
+    "irt_mean": 11.5871847307913,
+    "irt_std": 5.611838924670774,
+    "ccs_mean": 472.6052222306113,
+    "ccs_std": 113.82263804811996
+  },
+  "ms2_ion_order": "y1(1+), y1(2+), b1(1+), b1(2+), y2(1+), y2(2+), b2(1+), b2(2+), ..."
+}
