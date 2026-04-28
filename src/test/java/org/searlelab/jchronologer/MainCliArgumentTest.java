@@ -54,13 +54,14 @@ class MainCliArgumentTest {
     void invalidMinimumChargeProbabilityReturnsError() throws Exception {
         Path input = Files.createTempFile("main-cli-input", ".txt");
         Path fasta = Files.createTempFile("main-cli-fasta", ".fasta");
+        Path output = Files.createTempFile("main-cli-output", ".dlib");
         Files.writeString(input, "VATVSLPR\n", StandardCharsets.UTF_8);
         Files.writeString(fasta, ">P1\nVATVSLPR\n", StandardCharsets.UTF_8);
 
         RunResult result = runMain(
                 input.toString(),
                 fasta.toString(),
-                "out.dlib",
+                output.toString(),
                 "--min_charge_probability",
                 "1.1");
         assertEquals(2, result.code);
@@ -71,13 +72,14 @@ class MainCliArgumentTest {
     void invalidNceReturnsError() throws Exception {
         Path input = Files.createTempFile("main-cli-input", ".txt");
         Path fasta = Files.createTempFile("main-cli-fasta", ".fasta");
+        Path output = Files.createTempFile("main-cli-output", ".dlib");
         Files.writeString(input, "VATVSLPR\n", StandardCharsets.UTF_8);
         Files.writeString(fasta, ">P1\nVATVSLPR\n", StandardCharsets.UTF_8);
 
         RunResult result = runMain(
                 input.toString(),
                 fasta.toString(),
-                "out.dlib",
+                output.toString(),
                 "--nce",
                 "9.0");
         assertEquals(2, result.code);
@@ -88,13 +90,14 @@ class MainCliArgumentTest {
     void invalidBatchSizeReturnsError() throws Exception {
         Path input = Files.createTempFile("main-cli-input", ".txt");
         Path fasta = Files.createTempFile("main-cli-fasta", ".fasta");
+        Path output = Files.createTempFile("main-cli-output", ".dlib");
         Files.writeString(input, "VATVSLPR\n", StandardCharsets.UTF_8);
         Files.writeString(fasta, ">P1\nVATVSLPR\n", StandardCharsets.UTF_8);
 
         RunResult result = runMain(
                 input.toString(),
                 fasta.toString(),
-                "out.dlib",
+                output.toString(),
                 "--batch_size",
                 "0");
         assertEquals(2, result.code);
@@ -105,13 +108,14 @@ class MainCliArgumentTest {
     void fastModeFlagIsAccepted() throws Exception {
         Path input = Files.createTempFile("main-cli-input", ".txt");
         Path fasta = Files.createTempFile("main-cli-fasta", ".fasta");
+        Path output = Files.createTempFile("main-cli-output", ".dlib");
         Files.writeString(input, "VATVSLPR\n", StandardCharsets.UTF_8);
         Files.writeString(fasta, ">P1\nVATVSLPR\n", StandardCharsets.UTF_8);
 
         RunResult result = runMain(
                 input.toString(),
                 fasta.toString(),
-                "out.dlib",
+                output.toString(),
                 "--fast_mode");
         assertTrue(result.code == 0 || result.code == 1);
         assertTrue(!result.stderr.contains("Unknown option: --fast_mode"));
@@ -121,9 +125,10 @@ class MainCliArgumentTest {
     void emptyInputFileReturnsPredictionFailure() throws Exception {
         Path input = Files.createTempFile("main-cli-empty", ".txt");
         Path fasta = Files.createTempFile("main-cli-fasta", ".fasta");
+        Path output = Files.createTempFile("main-cli-output", ".dlib");
         Files.writeString(fasta, ">P1\nVATVSLPR\n", StandardCharsets.UTF_8);
 
-        RunResult result = runMain(input.toString(), fasta.toString(), "out.dlib");
+        RunResult result = runMain(input.toString(), fasta.toString(), output.toString());
         assertEquals(1, result.code);
         assertTrue(result.stderr.contains("DLIB generation failed: Input file is empty"));
     }
@@ -132,10 +137,11 @@ class MainCliArgumentTest {
     void missingPeptideColumnInTsvReturnsPredictionFailure() throws Exception {
         Path input = Files.createTempFile("main-cli-input", ".tsv");
         Path fasta = Files.createTempFile("main-cli-fasta", ".fasta");
+        Path output = Files.createTempFile("main-cli-output", ".dlib");
         Files.writeString(input, "Other\tId\nVATVSLPR\t1\n", StandardCharsets.UTF_8);
         Files.writeString(fasta, ">P1\nVATVSLPR\n", StandardCharsets.UTF_8);
 
-        RunResult result = runMain(input.toString(), fasta.toString(), "out.dlib");
+        RunResult result = runMain(input.toString(), fasta.toString(), output.toString());
         assertEquals(1, result.code);
         assertTrue(result.stderr.contains("Input TSV is missing peptide column: PeptideModSeq"));
     }
@@ -144,17 +150,18 @@ class MainCliArgumentTest {
     void malformedFastaReturnsPredictionFailure() throws Exception {
         Path input = Files.createTempFile("main-cli-input", ".txt");
         Path fasta = Files.createTempFile("main-cli-fasta", ".fasta");
+        Path output = Files.createTempFile("main-cli-output", ".dlib");
         Files.writeString(input, "VATVSLPR\n", StandardCharsets.UTF_8);
         Files.writeString(fasta, "VATVSLPR\n", StandardCharsets.UTF_8);
 
-        RunResult result = runMain(input.toString(), fasta.toString(), "out.dlib");
+        RunResult result = runMain(input.toString(), fasta.toString(), output.toString());
         assertEquals(1, result.code);
         assertTrue(result.stderr.contains("DLIB generation failed: Malformed FASTA"));
     }
 
     @Test
     void missingInputFileReturnsError() {
-        RunResult result = runMain("missing.txt", "missing.fasta", "out.dlib");
+        RunResult result = runMain("missing.txt", "missing.fasta", tempOutputPath().toString());
         assertEquals(2, result.code);
         assertTrue(result.stderr.contains("Input peptide file does not exist"));
     }
@@ -169,6 +176,14 @@ class MainCliArgumentTest {
                 code,
                 stdoutBytes.toString(StandardCharsets.UTF_8),
                 stderrBytes.toString(StandardCharsets.UTF_8));
+    }
+
+    private static Path tempOutputPath() {
+        try {
+            return Files.createTempFile("main-cli-output", ".dlib");
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to create temp output path for test.", e);
+        }
     }
 
     private record RunResult(int code, String stdout, String stderr) {
