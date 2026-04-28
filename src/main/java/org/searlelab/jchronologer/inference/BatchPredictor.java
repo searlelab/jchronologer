@@ -55,15 +55,16 @@ public final class BatchPredictor implements AutoCloseable {
                 System.getProperty("os.arch"));
 
         try {
-            TorchModelLoader modelLoader = new TorchModelLoader();
-            long modelInitStart = System.nanoTime();
-            TorchModelLoader.LoadedModel loadedModel = modelLoader.load("Chronologer", modelPath);
-            this.model = loadedModel.model();
+            long modelCreateStart = System.nanoTime();
+            this.model = Model.newInstance("chronologer", "PyTorch");
+            logVerbose("Created DJL model handle in {} ms", elapsedMillis(modelCreateStart));
+
+            long modelLoadStart = System.nanoTime();
+            this.model.load(modelPath.getParent(), modelPath.getFileName().toString());
             logVerbose(
-                    "Loaded TorchScript model {} on {} in {} ms",
+                    "Loaded TorchScript model {} in {} ms",
                     modelPath.getFileName(),
-                    loadedModel.device(),
-                    elapsedMillis(modelInitStart));
+                    elapsedMillis(modelLoadStart));
 
             this.predictors = ConcurrentHashMap.newKeySet();
             this.threadLocalPredictor = ThreadLocal.withInitial(() -> {

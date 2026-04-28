@@ -79,13 +79,6 @@ mvn -am -Pfat-jar package
 Artifact:
 - Executable fat jar: `target/jchronologer-1.0.0-all.jar`
 
-## Runtime Notes
-
-- Published artifacts bundle CPU PyTorch natives by default.
-- Deployments can add a compatible DJL PyTorch CUDA native runtime jar to the runtime classpath.
-- When a compatible CUDA runtime jar is present and the machine exposes a usable GPU, jchronologer will try CUDA first and automatically fall back to CPU if CUDA is unavailable or initialization fails.
-- This auto-selection only applies to CUDA; other GPU backends are not part of this runtime path.
-
 ## API Usage
 
 ```java

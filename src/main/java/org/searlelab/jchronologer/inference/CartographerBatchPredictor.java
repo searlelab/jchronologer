@@ -28,8 +28,8 @@ public final class CartographerBatchPredictor implements AutoCloseable {
     public CartographerBatchPredictor(String modelResource) {
         Path modelPath = ResourceUtils.copyClasspathResourceToTempFile(modelResource, ".torchscript.pt");
         try {
-            TorchModelLoader.LoadedModel loadedModel = new TorchModelLoader().load("Cartographer", modelPath);
-            this.model = loadedModel.model();
+            this.model = Model.newInstance("cartographer", "PyTorch");
+            this.model.load(modelPath.getParent(), modelPath.getFileName().toString());
 
             this.predictors = ConcurrentHashMap.newKeySet();
             this.threadLocalPredictor = ThreadLocal.withInitial(() -> {
