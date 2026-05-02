@@ -16,6 +16,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.searlelab.jchronologer.dlib.DlibDatabase;
 import org.searlelab.jchronologer.dlib.DlibEntryRecord;
@@ -90,7 +91,7 @@ class CalibrateNceMainTest {
 
         assertEquals(3, selected.size());
         assertIterableEquals(List.of("pepA", "pepB", "pepC"), selected.stream().map(
-                CalibrateNceMain.CalibrationRow::unimodPeptideSequence).toList());
+                CalibrateNceMain.CalibrationRow::unimodPeptideSequence).collect(Collectors.toList()));
     }
 
     @Test

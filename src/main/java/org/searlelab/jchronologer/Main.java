@@ -65,7 +65,7 @@ public final class Main {
             return 2;
         }
 
-        if (cliArgs.help) {
+        if (cliArgs.help()) {
             printUsage(out);
             return 0;
         }
@@ -80,26 +80,26 @@ public final class Main {
     }
 
     private static void runLibraryGeneration(CliArgs cliArgs, PrintStream err) throws IOException, SQLException {
-        List<String> peptides = readInputPeptides(cliArgs.input, cliArgs.peptideColumn);
-        List<FastaProteinRecord> proteins = SimpleFastaReader.read(cliArgs.fasta);
+        List<String> peptides = readInputPeptides(cliArgs.input(), cliArgs.peptideColumn());
+        List<FastaProteinRecord> proteins = SimpleFastaReader.read(cliArgs.fasta());
         if (peptides.isEmpty()) {
-            throw new IllegalArgumentException("Input file is empty: " + cliArgs.input);
+            throw new IllegalArgumentException("Input file is empty: " + cliArgs.input());
         }
 
         ChronologerLibraryOptions options = ChronologerLibraryOptions.builder()
-                .batchSize(cliArgs.batchSize)
-                .cartographerBatchSize(cliArgs.batchSize)
-                .verboseLogging(cliArgs.verbose)
+                .batchSize(cliArgs.batchSize())
+                .cartographerBatchSize(cliArgs.batchSize())
+                .verboseLogging(cliArgs.verbose())
                 .build();
 
         Summary summary = new Summary(peptides.size());
         boolean success = false;
-        try (ChronologerLibraryPredictor predictor = cliArgs.fastMode
+        try (ChronologerLibraryPredictor predictor = cliArgs.fastMode()
                         ? ChronologerFactory.createFastLibraryPredictor(options)
                         : ChronologerFactory.createLibraryPredictor(options);
-                DlibDatabase database = new DlibDatabase(cliArgs.output, DlibMetadata.defaults())) {
-            for (int start = 0; start < peptides.size(); start += cliArgs.batchSize) {
-                int end = Math.min(start + cliArgs.batchSize, peptides.size());
+                DlibDatabase database = new DlibDatabase(cliArgs.output(), DlibMetadata.defaults())) {
+            for (int start = 0; start < peptides.size(); start += cliArgs.batchSize()) {
+                int end = Math.min(start + cliArgs.batchSize(), peptides.size());
                 processBatch(peptides.subList(start, end), proteins, predictor, database, cliArgs, summary);
             }
             if (summary.entriesWritten == 0) {
@@ -109,14 +109,14 @@ public final class Main {
             success = true;
         } finally {
             if (!success || summary.entriesWritten == 0) {
-                Files.deleteIfExists(cliArgs.output);
+                Files.deleteIfExists(cliArgs.output());
             }
         }
 
         err.println("Read " + summary.peptidesRead + " peptides from input.");
         err.println("Processed " + summary.batchesProcessed + " peptide batches.");
         err.println("Generated " + summary.predictedEntries + " predicted precursor entries.");
-        err.println("Wrote " + summary.entriesWritten + " DLIB entries to " + cliArgs.output + ".");
+        err.println("Wrote " + summary.entriesWritten + " DLIB entries to " + cliArgs.output() + ".");
         err.println("Dropped " + summary.invalidPeptides + " peptides for invalid input.");
         err.println("Dropped " + summary.noChargePeptides + " peptides with no qualifying charge.");
         err.println("Dropped " + summary.unmatchedPeptides + " peptides and "
@@ -160,8 +160,8 @@ public final class Main {
         for (String normalizedPeptide : normalizedPeptides) {
             requests.add(new LibraryPredictionRequest(
                     normalizedPeptide,
-                    cliArgs.nce,
-                    cliArgs.minimumChargeProbability));
+                    cliArgs.nce(),
+                    cliArgs.minimumChargeProbability()));
         }
 
         List<ChronologerLibraryEntry> predictions = predictor.predict(requests);
@@ -402,17 +402,80 @@ public final class Main {
         stream.println("  --help, -h                              Show this help");
     }
 
-    private record CliArgs(
-            Path input,
-            Path fasta,
-            Path output,
-            String peptideColumn,
-            int batchSize,
-            double nce,
-            double minimumChargeProbability,
-            boolean verbose,
-            boolean fastMode,
-            boolean help) {
+    private static final class CliArgs {
+        private final Path input;
+        private final Path fasta;
+        private final Path output;
+        private final String peptideColumn;
+        private final int batchSize;
+        private final double nce;
+        private final double minimumChargeProbability;
+        private final boolean verbose;
+        private final boolean fastMode;
+        private final boolean help;
+
+        private CliArgs(
+                Path input,
+                Path fasta,
+                Path output,
+                String peptideColumn,
+                int batchSize,
+                double nce,
+                double minimumChargeProbability,
+                boolean verbose,
+                boolean fastMode,
+                boolean help) {
+            this.input = input;
+            this.fasta = fasta;
+            this.output = output;
+            this.peptideColumn = peptideColumn;
+            this.batchSize = batchSize;
+            this.nce = nce;
+            this.minimumChargeProbability = minimumChargeProbability;
+            this.verbose = verbose;
+            this.fastMode = fastMode;
+            this.help = help;
+        }
+
+        private Path input() {
+            return input;
+        }
+
+        private Path fasta() {
+            return fasta;
+        }
+
+        private Path output() {
+            return output;
+        }
+
+        private String peptideColumn() {
+            return peptideColumn;
+        }
+
+        private int batchSize() {
+            return batchSize;
+        }
+
+        private double nce() {
+            return nce;
+        }
+
+        private double minimumChargeProbability() {
+            return minimumChargeProbability;
+        }
+
+        private boolean verbose() {
+            return verbose;
+        }
+
+        private boolean fastMode() {
+            return fastMode;
+        }
+
+        private boolean help() {
+            return help;
+        }
     }
 
     private static final class Summary {

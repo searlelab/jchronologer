@@ -5,12 +5,12 @@
 
   <groupId>org.searlelab</groupId>
   <artifactId>jchronologer</artifactId>
-  <version>1.0.8</version>
+  <version>1.0.9</version>
   <name>jchronologer</name>
   <description>Java inference implementation of Chronologer using DJL</description>
 
   <properties>
-    <maven.compiler.release>17</maven.compiler.release>
+    <maven.compiler.release>11</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <djl.version>0.36.0</djl.version>
     <pytorch.native.version>2.7.1</pytorch.native.version>

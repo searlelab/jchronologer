@@ -245,7 +245,7 @@ public final class PeptideSequenceConverter {
             residueMods.add(canonicalizeTokens(currentMods));
         }
 
-        if (residues.isEmpty()) {
+        if (residues.length() == 0) {
             throw new IllegalArgumentException("Mass-encoded sequence has no residues: " + sequence);
         }
 

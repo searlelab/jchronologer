@@ -338,8 +338,8 @@ class DefaultScoutLibraryPredictorIntegrationTest {
             return method.invoke(target, args);
         } catch (InvocationTargetException e) {
             Throwable cause = e.getCause();
-            if (cause instanceof Exception exception) {
-                throw exception;
+            if (cause instanceof Exception) {
+                throw (Exception) cause;
             }
             throw e;
         }

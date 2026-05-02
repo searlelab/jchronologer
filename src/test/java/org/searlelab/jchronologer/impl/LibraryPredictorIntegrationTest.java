@@ -263,14 +263,27 @@ class LibraryPredictorIntegrationTest {
             byte[] expectedDistribution = entry.getValue();
             assertEquals(6, observed.length);
             for (int i = 0; i < expectedDistribution.length; i++) {
-            	boolean accept = switch (expectedDistribution[i]) {
-					case 0 -> observed[i]<=0.0001f;
-					case 1 -> observed[i]>0.0001f&&observed[i]<=0.01f;
-					case 2 -> observed[i]>0.01f&&observed[i]<=0.1f;
-					case 3 -> observed[i]>0.1f&&observed[i]<=0.33f;
-					case 4 -> observed[i]>0.33f;
-					default -> false;
-				};
+                boolean accept;
+                switch (expectedDistribution[i]) {
+                    case 0:
+                        accept = observed[i] <= 0.0001f;
+                        break;
+                    case 1:
+                        accept = observed[i] > 0.0001f && observed[i] <= 0.01f;
+                        break;
+                    case 2:
+                        accept = observed[i] > 0.01f && observed[i] <= 0.1f;
+                        break;
+                    case 3:
+                        accept = observed[i] > 0.1f && observed[i] <= 0.33f;
+                        break;
+                    case 4:
+                        accept = observed[i] > 0.33f;
+                        break;
+                    default:
+                        accept = false;
+                        break;
+                }
                 assertTrue(accept,
                         "Unexpected charge probability for " + entry.getKey() + " at z=" + (i + 1)+" is "+observed[i]);
             }

@@ -414,7 +414,7 @@ class CartographerPrtcParityTest {
 				.sorted((left, right) -> Float.compare(right.getValue(), left.getValue()))
 				.limit(count)
 				.map(Map.Entry::getKey)
-				.toList();
+				.collect(java.util.stream.Collectors.toList());
 	}
 
 	private static List<String> validIonTypes(int peptideLength, byte precursorCharge) {

@@ -1013,9 +1013,10 @@ public final class DefaultScoutLibraryPredictor implements ChronologerLibraryPre
             if (this == object) {
                 return true;
             }
-            if (!(object instanceof AutomaticSeedKey other)) {
+            if (!(object instanceof AutomaticSeedKey)) {
                 return false;
             }
+            AutomaticSeedKey other = (AutomaticSeedKey) object;
             return unimodPeptide.equals(other.unimodPeptide)
                     && Double.doubleToLongBits(precursorNce) == Double.doubleToLongBits(other.precursorNce);
         }
@@ -1047,9 +1048,10 @@ public final class DefaultScoutLibraryPredictor implements ChronologerLibraryPre
             if (this == object) {
                 return true;
             }
-            if (!(object instanceof PredictionJobKey other)) {
+            if (!(object instanceof PredictionJobKey)) {
                 return false;
             }
+            PredictionJobKey other = (PredictionJobKey) object;
             return charge == other.charge
                     && unimodPeptide.equals(other.unimodPeptide)
                     && Double.doubleToLongBits(nce) == Double.doubleToLongBits(other.nce);

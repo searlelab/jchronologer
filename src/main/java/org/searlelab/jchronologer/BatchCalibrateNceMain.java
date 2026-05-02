@@ -9,6 +9,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.stream.Collectors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -260,7 +261,7 @@ public final class BatchCalibrateNceMain {
                     .filter(Files::isRegularFile)
                     .filter(path -> matcher.matches(path.getFileName().toString()))
                     .sorted(Comparator.comparing(path -> path.getFileName().toString()))
-                    .toList();
+                    .collect(Collectors.toList());
         }
     }
 
@@ -433,29 +434,149 @@ public final class BatchCalibrateNceMain {
         out.printf(Locale.US, "Default input dir: %s%n", DEFAULT_INPUT_DIR);
     }
 
-    record CliArgs(
-            Path inputDir,
-            String glob,
-            double startOffset,
-            double fallbackStartNce,
-            double ppmTolerance,
-            int maxEntries,
-            int groupTarget,
-            double mzBinWidth,
-            int batchSize,
-            int inferenceThreads,
-            boolean verbose,
-            boolean help) {
+    static final class CliArgs {
+        private final Path inputDir;
+        private final String glob;
+        private final double startOffset;
+        private final double fallbackStartNce;
+        private final double ppmTolerance;
+        private final int maxEntries;
+        private final int groupTarget;
+        private final double mzBinWidth;
+        private final int batchSize;
+        private final int inferenceThreads;
+        private final boolean verbose;
+        private final boolean help;
+
+        CliArgs(
+                Path inputDir,
+                String glob,
+                double startOffset,
+                double fallbackStartNce,
+                double ppmTolerance,
+                int maxEntries,
+                int groupTarget,
+                double mzBinWidth,
+                int batchSize,
+                int inferenceThreads,
+                boolean verbose,
+                boolean help) {
+            this.inputDir = inputDir;
+            this.glob = glob;
+            this.startOffset = startOffset;
+            this.fallbackStartNce = fallbackStartNce;
+            this.ppmTolerance = ppmTolerance;
+            this.maxEntries = maxEntries;
+            this.groupTarget = groupTarget;
+            this.mzBinWidth = mzBinWidth;
+            this.batchSize = batchSize;
+            this.inferenceThreads = inferenceThreads;
+            this.verbose = verbose;
+            this.help = help;
+        }
+
+        Path inputDir() {
+            return inputDir;
+        }
+
+        String glob() {
+            return glob;
+        }
+
+        double startOffset() {
+            return startOffset;
+        }
+
+        double fallbackStartNce() {
+            return fallbackStartNce;
+        }
+
+        double ppmTolerance() {
+            return ppmTolerance;
+        }
+
+        int maxEntries() {
+            return maxEntries;
+        }
+
+        int groupTarget() {
+            return groupTarget;
+        }
+
+        double mzBinWidth() {
+            return mzBinWidth;
+        }
+
+        int batchSize() {
+            return batchSize;
+        }
+
+        int inferenceThreads() {
+            return inferenceThreads;
+        }
+
+        boolean verbose() {
+            return verbose;
+        }
+
+        boolean help() {
+            return help;
+        }
     }
 
-    record BatchResult(
-            Path dlib,
-            Double acquiredNce,
-            double startNce,
-            double estimatedNce,
-            double meanCosine,
-            int selectedRows,
-            int validRows) {
+    static final class BatchResult {
+        private final Path dlib;
+        private final Double acquiredNce;
+        private final double startNce;
+        private final double estimatedNce;
+        private final double meanCosine;
+        private final int selectedRows;
+        private final int validRows;
+
+        BatchResult(
+                Path dlib,
+                Double acquiredNce,
+                double startNce,
+                double estimatedNce,
+                double meanCosine,
+                int selectedRows,
+                int validRows) {
+            this.dlib = dlib;
+            this.acquiredNce = acquiredNce;
+            this.startNce = startNce;
+            this.estimatedNce = estimatedNce;
+            this.meanCosine = meanCosine;
+            this.selectedRows = selectedRows;
+            this.validRows = validRows;
+        }
+
+        Path dlib() {
+            return dlib;
+        }
+
+        Double acquiredNce() {
+            return acquiredNce;
+        }
+
+        double startNce() {
+            return startNce;
+        }
+
+        double estimatedNce() {
+            return estimatedNce;
+        }
+
+        double meanCosine() {
+            return meanCosine;
+        }
+
+        int selectedRows() {
+            return selectedRows;
+        }
+
+        int validRows() {
+            return validRows;
+        }
     }
 
     static final class PathMatcher {

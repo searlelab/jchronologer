@@ -9,6 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.searlelab.jchronologer.api.ChronologerLibraryEntry;
 import org.searlelab.jchronologer.api.ChronologerLibraryPredictor;
@@ -64,7 +65,9 @@ class CalibrateNceMainIntegrationTest {
         try (ChronologerLibraryPredictor predictor = ChronologerFactory.createLibraryPredictorDefault();
                 DlibDatabase database = new DlibDatabase(output, DlibMetadata.defaults())) {
             List<ChronologerLibraryEntry> entries = predictor.predict(requests);
-            database.writeBatch(entries.stream().map(CalibrateNceMainIntegrationTest::toDlibEntry).toList(), List.of());
+            database.writeBatch(
+                    entries.stream().map(CalibrateNceMainIntegrationTest::toDlibEntry).collect(Collectors.toList()),
+                    List.of());
         }
     }
 
@@ -96,6 +99,15 @@ class CalibrateNceMainIntegrationTest {
                 stderrBytes.toString(StandardCharsets.UTF_8));
     }
 
-    private record RunResult(int code, String stdout, String stderr) {
+    private static final class RunResult {
+        private final int code;
+        private final String stdout;
+        private final String stderr;
+
+        private RunResult(int code, String stdout, String stderr) {
+            this.code = code;
+            this.stdout = stdout;
+            this.stderr = stderr;
+        }
     }
 }

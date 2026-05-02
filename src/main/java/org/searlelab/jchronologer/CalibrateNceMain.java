@@ -22,6 +22,7 @@ import java.util.Optional;
 import java.util.TreeMap;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.searlelab.jchronologer.api.ChronologerLibraryEntry;
 import org.searlelab.jchronologer.api.ChronologerLibraryOptions;
 import org.searlelab.jchronologer.api.ChronologerLibraryPredictor;
@@ -169,7 +170,7 @@ public final class CalibrateNceMain {
                 .sorted(Comparator.comparingDouble(CalibrationRow::summedObservedIntensity).reversed()
                         .thenComparing(CalibrationRow::unimodPeptideSequence)
                         .thenComparingInt(row -> row.precursorCharge()))
-                .toList();
+                .collect(Collectors.toList());
     }
 
     private static Optional<CalibrationRow> decodeCalibrationRow(
@@ -233,7 +234,7 @@ public final class CalibrateNceMain {
                 .sorted(Comparator.comparingDouble(CalibrationRow::summedObservedIntensity).reversed()
                         .thenComparing(CalibrationRow::unimodPeptideSequence)
                         .thenComparingInt(row -> row.precursorCharge()))
-                .toList();
+                .collect(Collectors.toList());
 
         Map<Byte, List<CalibrationRow>> byCharge = groupBy(rankedRows, CalibrationRow::precursorCharge);
         LinkedHashSet<CalibrationRow> chargeCoverage = new LinkedHashSet<>();
@@ -639,7 +640,7 @@ public final class CalibrateNceMain {
         if (values.isEmpty()) {
             throw new IllegalArgumentException("Values must be non-empty.");
         }
-        List<Double> sorted = values.stream().sorted().toList();
+        List<Double> sorted = values.stream().sorted().collect(Collectors.toList());
         return new SummaryStats(
                 sorted.size(),
                 percentile(sorted, 0.05),
@@ -958,58 +959,358 @@ public final class CalibrateNceMain {
         return Math.round(nce * 10_000.0) / 10_000.0;
     }
 
-    record CliArgs(
-            Path input,
-            double startNce,
-            double ppmTolerance,
-            int maxEntries,
-            int groupTarget,
-            double mzBinWidth,
-            int batchSize,
-            int inferenceThreads,
-            boolean verbose,
-            boolean help) {
+    static final class CliArgs {
+        private final Path input;
+        private final double startNce;
+        private final double ppmTolerance;
+        private final int maxEntries;
+        private final int groupTarget;
+        private final double mzBinWidth;
+        private final int batchSize;
+        private final int inferenceThreads;
+        private final boolean verbose;
+        private final boolean help;
+
+        CliArgs(
+                Path input,
+                double startNce,
+                double ppmTolerance,
+                int maxEntries,
+                int groupTarget,
+                double mzBinWidth,
+                int batchSize,
+                int inferenceThreads,
+                boolean verbose,
+                boolean help) {
+            this.input = input;
+            this.startNce = startNce;
+            this.ppmTolerance = ppmTolerance;
+            this.maxEntries = maxEntries;
+            this.groupTarget = groupTarget;
+            this.mzBinWidth = mzBinWidth;
+            this.batchSize = batchSize;
+            this.inferenceThreads = inferenceThreads;
+            this.verbose = verbose;
+            this.help = help;
+        }
+
+        Path input() {
+            return input;
+        }
+
+        double startNce() {
+            return startNce;
+        }
+
+        double ppmTolerance() {
+            return ppmTolerance;
+        }
+
+        int maxEntries() {
+            return maxEntries;
+        }
+
+        int groupTarget() {
+            return groupTarget;
+        }
+
+        double mzBinWidth() {
+            return mzBinWidth;
+        }
+
+        int batchSize() {
+            return batchSize;
+        }
+
+        int inferenceThreads() {
+            return inferenceThreads;
+        }
+
+        boolean verbose() {
+            return verbose;
+        }
+
+        boolean help() {
+            return help;
+        }
     }
 
-    record CalibrationRow(
-            String unimodPeptideSequence,
-            byte precursorCharge,
-            double precursorMz,
-            double[] observedMasses,
-            float[] observedIntensities,
-            double summedObservedIntensity,
-            double mzBinStart,
-            String mzBinLabel) {
+    static final class CalibrationRow {
+        private final String unimodPeptideSequence;
+        private final byte precursorCharge;
+        private final double precursorMz;
+        private final double[] observedMasses;
+        private final float[] observedIntensities;
+        private final double summedObservedIntensity;
+        private final double mzBinStart;
+        private final String mzBinLabel;
+
+        CalibrationRow(
+                String unimodPeptideSequence,
+                byte precursorCharge,
+                double precursorMz,
+                double[] observedMasses,
+                float[] observedIntensities,
+                double summedObservedIntensity,
+                double mzBinStart,
+                String mzBinLabel) {
+            this.unimodPeptideSequence = unimodPeptideSequence;
+            this.precursorCharge = precursorCharge;
+            this.precursorMz = precursorMz;
+            this.observedMasses = observedMasses;
+            this.observedIntensities = observedIntensities;
+            this.summedObservedIntensity = summedObservedIntensity;
+            this.mzBinStart = mzBinStart;
+            this.mzBinLabel = mzBinLabel;
+        }
+
+        String unimodPeptideSequence() {
+            return unimodPeptideSequence;
+        }
+
+        byte precursorCharge() {
+            return precursorCharge;
+        }
+
+        double precursorMz() {
+            return precursorMz;
+        }
+
+        double[] observedMasses() {
+            return observedMasses;
+        }
+
+        float[] observedIntensities() {
+            return observedIntensities;
+        }
+
+        double summedObservedIntensity() {
+            return summedObservedIntensity;
+        }
+
+        double mzBinStart() {
+            return mzBinStart;
+        }
+
+        String mzBinLabel() {
+            return mzBinLabel;
+        }
     }
 
-    record Evaluation(
-            double nce,
-            double meanCosine,
-            List<Double> perRowScores,
-            List<CalibrationRow> rows,
-            int evaluationIndex,
-            double bestKnownNce,
-            Optional<Double> leftBracket,
-            Optional<Double> rightBracket) {
+    static final class Evaluation {
+        private final double nce;
+        private final double meanCosine;
+        private final List<Double> perRowScores;
+        private final List<CalibrationRow> rows;
+        private final int evaluationIndex;
+        private final double bestKnownNce;
+        private final Optional<Double> leftBracket;
+        private final Optional<Double> rightBracket;
+
+        Evaluation(
+                double nce,
+                double meanCosine,
+                List<Double> perRowScores,
+                List<CalibrationRow> rows,
+                int evaluationIndex,
+                double bestKnownNce,
+                Optional<Double> leftBracket,
+                Optional<Double> rightBracket) {
+            this.nce = nce;
+            this.meanCosine = meanCosine;
+            this.perRowScores = perRowScores;
+            this.rows = rows;
+            this.evaluationIndex = evaluationIndex;
+            this.bestKnownNce = bestKnownNce;
+            this.leftBracket = leftBracket;
+            this.rightBracket = rightBracket;
+        }
+
+        double nce() {
+            return nce;
+        }
+
+        double meanCosine() {
+            return meanCosine;
+        }
+
+        List<Double> perRowScores() {
+            return perRowScores;
+        }
+
+        List<CalibrationRow> rows() {
+            return rows;
+        }
+
+        int evaluationIndex() {
+            return evaluationIndex;
+        }
+
+        double bestKnownNce() {
+            return bestKnownNce;
+        }
+
+        Optional<Double> leftBracket() {
+            return leftBracket;
+        }
+
+        Optional<Double> rightBracket() {
+            return rightBracket;
+        }
     }
 
-    record SearchResult(Evaluation bestEvaluation, List<Evaluation> evaluations, DistributionReport distributionReport) {
+    static final class SearchResult {
+        private final Evaluation bestEvaluation;
+        private final List<Evaluation> evaluations;
+        private final DistributionReport distributionReport;
+
+        SearchResult(Evaluation bestEvaluation, List<Evaluation> evaluations, DistributionReport distributionReport) {
+            this.bestEvaluation = bestEvaluation;
+            this.evaluations = evaluations;
+            this.distributionReport = distributionReport;
+        }
+
+        Evaluation bestEvaluation() {
+            return bestEvaluation;
+        }
+
+        List<Evaluation> evaluations() {
+            return evaluations;
+        }
+
+        DistributionReport distributionReport() {
+            return distributionReport;
+        }
     }
 
-    record CalibrationOutcome(List<CalibrationRow> allRows, List<CalibrationRow> selectedRows, SearchResult searchResult) {
+    static final class CalibrationOutcome {
+        private final List<CalibrationRow> allRows;
+        private final List<CalibrationRow> selectedRows;
+        private final SearchResult searchResult;
+
+        CalibrationOutcome(List<CalibrationRow> allRows, List<CalibrationRow> selectedRows, SearchResult searchResult) {
+            this.allRows = allRows;
+            this.selectedRows = selectedRows;
+            this.searchResult = searchResult;
+        }
+
+        List<CalibrationRow> allRows() {
+            return allRows;
+        }
+
+        List<CalibrationRow> selectedRows() {
+            return selectedRows;
+        }
+
+        SearchResult searchResult() {
+            return searchResult;
+        }
     }
 
-    record SummaryStats(int count, double p05, double p25, double p50, double p75, double p95) {
+    static final class SummaryStats {
+        private final int count;
+        private final double p05;
+        private final double p25;
+        private final double p50;
+        private final double p75;
+        private final double p95;
+
+        SummaryStats(int count, double p05, double p25, double p50, double p75, double p95) {
+            this.count = count;
+            this.p05 = p05;
+            this.p25 = p25;
+            this.p50 = p50;
+            this.p75 = p75;
+            this.p95 = p95;
+        }
+
+        int count() {
+            return count;
+        }
+
+        double p05() {
+            return p05;
+        }
+
+        double p25() {
+            return p25;
+        }
+
+        double p50() {
+            return p50;
+        }
+
+        double p75() {
+            return p75;
+        }
+
+        double p95() {
+            return p95;
+        }
     }
 
-    record HistogramBin(int startInclusive, int endExclusive, int count, String bar) {
+    static final class HistogramBin {
+        private final int startInclusive;
+        private final int endExclusive;
+        private final int count;
+        private final String bar;
+
+        HistogramBin(int startInclusive, int endExclusive, int count, String bar) {
+            this.startInclusive = startInclusive;
+            this.endExclusive = endExclusive;
+            this.count = count;
+            this.bar = bar;
+        }
+
+        int startInclusive() {
+            return startInclusive;
+        }
+
+        int endExclusive() {
+            return endExclusive;
+        }
+
+        int count() {
+            return count;
+        }
+
+        String bar() {
+            return bar;
+        }
     }
 
-    record DistributionReport(
-            SummaryStats overall,
-            Map<Byte, SummaryStats> byCharge,
-            Map<String, SummaryStats> byMzBin,
-            List<HistogramBin> histogram) {
+    static final class DistributionReport {
+        private final SummaryStats overall;
+        private final Map<Byte, SummaryStats> byCharge;
+        private final Map<String, SummaryStats> byMzBin;
+        private final List<HistogramBin> histogram;
+
+        DistributionReport(
+                SummaryStats overall,
+                Map<Byte, SummaryStats> byCharge,
+                Map<String, SummaryStats> byMzBin,
+                List<HistogramBin> histogram) {
+            this.overall = overall;
+            this.byCharge = byCharge;
+            this.byMzBin = byMzBin;
+            this.histogram = histogram;
+        }
+
+        SummaryStats overall() {
+            return overall;
+        }
+
+        Map<Byte, SummaryStats> byCharge() {
+            return byCharge;
+        }
+
+        Map<String, SummaryStats> byMzBin() {
+            return byMzBin;
+        }
+
+        List<HistogramBin> histogram() {
+            return histogram;
+        }
     }
 
     static final class Calibrator {

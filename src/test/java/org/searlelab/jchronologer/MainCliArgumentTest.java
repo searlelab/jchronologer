@@ -186,6 +186,15 @@ class MainCliArgumentTest {
         }
     }
 
-    private record RunResult(int code, String stdout, String stderr) {
+    private static final class RunResult {
+        private final int code;
+        private final String stdout;
+        private final String stderr;
+
+        private RunResult(int code, String stdout, String stderr) {
+            this.code = code;
+            this.stdout = stdout;
+            this.stderr = stderr;
+        }
     }
 }

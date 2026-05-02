@@ -65,7 +65,7 @@ public final class LibraryReportMain {
             return 2;
         }
 
-        if (cliArgs.help) {
+        if (cliArgs.help()) {
             printUsage(out);
             return 0;
         }
@@ -81,7 +81,7 @@ public final class LibraryReportMain {
     }
 
     private static List<ReportRow> buildRows(CliArgs cliArgs) {
-        List<String> requestedPeptides = cliArgs.peptides.isEmpty() ? DEFAULT_PEPTIDES : cliArgs.peptides;
+        List<String> requestedPeptides = cliArgs.peptides().isEmpty() ? DEFAULT_PEPTIDES : cliArgs.peptides();
 
         List<ReportRow> rows = new ArrayList<>();
         List<String> validPeptides = new ArrayList<>();
@@ -114,8 +114,8 @@ public final class LibraryReportMain {
                 try {
                     LibraryPredictionRequest request = new LibraryPredictionRequest(
                             peptide,
-                            cliArgs.nce,
-                            cliArgs.minimumChargeProbability);
+                            cliArgs.nce(),
+                            cliArgs.minimumChargeProbability());
                     List<ChronologerLibraryEntry> entries = predictor.predict(List.of(request));
                     if (entries.isEmpty()) {
                         rows.add(ReportRow.noCharge(peptide));
@@ -317,7 +317,34 @@ public final class LibraryReportMain {
         return raw.substring(0, 117) + "...";
     }
 
-    private record CliArgs(double nce, double minimumChargeProbability, List<String> peptides, boolean help) {
+    private static final class CliArgs {
+        private final double nce;
+        private final double minimumChargeProbability;
+        private final List<String> peptides;
+        private final boolean help;
+
+        private CliArgs(double nce, double minimumChargeProbability, List<String> peptides, boolean help) {
+            this.nce = nce;
+            this.minimumChargeProbability = minimumChargeProbability;
+            this.peptides = peptides;
+            this.help = help;
+        }
+
+        private double nce() {
+            return nce;
+        }
+
+        private double minimumChargeProbability() {
+            return minimumChargeProbability;
+        }
+
+        private List<String> peptides() {
+            return peptides;
+        }
+
+        private boolean help() {
+            return help;
+        }
     }
 
     private static final class ReportRow {

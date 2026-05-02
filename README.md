@@ -1,6 +1,6 @@
 # jchronologer
 
-`jchronologer` is a Java 17 inference implementation of the Chronologer peptide retention-time model using DJL (PyTorch engine).
+`jchronologer` is a Java 11 inference implementation of the Chronologer peptide retention-time model using DJL (PyTorch engine).
 
 The goal is parity with the Python Chronologer inference path (`Predict_RT.py`): same preprocessing conventions, same model artifacts, and deterministic acceptance/rejection behavior for peptide inputs.
 
